@@ -110,7 +110,7 @@ au3 <-
   au2 %>% 
   arrange(year, subtype, age) %>% 
   group_by(year, subtype) %>% 
-  do(ungroup_this(chunk = .data, lambda = 1e5)) %>% 
+  do(ungroup_this(chunk = .data, lambda = 1e10)) %>% 
   ungroup()
 
 au4 <- 

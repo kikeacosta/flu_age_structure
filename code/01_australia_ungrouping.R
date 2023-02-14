@@ -65,6 +65,12 @@ write_rds(dt4, "data_inter/subtypes_age_australia_std.rds")
 
 # ungrouping ages in single-year
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+chunk <- 
+  dt4 %>% 
+  filter(year == 2009,
+         subtype == "h1")
+lambda = 100
 ungroup_this <- 
   function(chunk,
            lambda = 100){
@@ -83,14 +89,17 @@ ungroup_this <-
     V1 <- pclm(x = ages,
                y = cass,
                nlast = nlast)$fitted
+    
     V2 <- pclm(x = ages,
                y = cass,
                nlast = nlast,
                control = list(lambda = lambda, deg = 3))$fitted
+    
     V3 <- pclm(x = ages,
                y = cass,
                nlast = nlast,
                offset = pops)$fitted * pops
+    
     V4 <- pclm(x = ages,
                y = cass,
                nlast = nlast,
@@ -167,7 +176,6 @@ h3_ratio_gr <-
   spread(subtype, rate_std) %>% 
   mutate(h3_rat = h3 / h1)
 
-
 h3_ratio_gr %>% 
   ggplot()+
   geom_line(aes(age, h3_rat))+
@@ -180,7 +188,7 @@ h3_ratio_gr %>%
   ggplot()+
   geom_line(aes(age, h3_rat, col = factor(year)))+
   scale_y_log10()+
-  scale_x_continuous(breaks = seq(1910, 2010, 5))+
+  scale_x_continuous(breaks = seq(0, 100, 10))+
   # facet_grid(~year)+
   geom_hline(yintercept = 1, linetype = "dashed")+
   theme_bw()
@@ -194,9 +202,8 @@ h3_ratio <-
 
 h3_ratio %>% 
   ggplot()+
-  geom_line(aes(age, h3_rat))+
+  geom_line(aes(cohort, h3_rat))+
   scale_y_log10()+
-  facet_grid(~year)+
   geom_hline(yintercept = 1, linetype = "dashed")+
   theme_bw()
 
@@ -207,7 +214,8 @@ h3_ratio %>%
   # facet_grid(~year)+
   scale_x_continuous(breaks = seq(1910, 2010, 5))+
   geom_hline(yintercept = 1, linetype = "dashed")+
-  theme_bw()
+  theme_bw()+
+  geom_vline(xintercept = c(1957, 1968, 1977), linetype = "dashed")
 
 ggsave("figures/h3_ratio_australia_single-year_age.png",
        w = 10, h = 4)
