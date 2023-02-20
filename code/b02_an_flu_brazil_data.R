@@ -46,6 +46,7 @@ chunk <-
   pop2 %>% 
   filter(sex == "t",
          year == 2010)
+
 ungroup_open_age <- 
   function(chunk){
     
@@ -99,8 +100,11 @@ flu0 %>%
 flu2 <- 
   flu %>% 
   mutate(cohort = year(date_bth),
-         age = interval(ymd(date_bth),ymd(date_flu)) %>% as.numeric('years'),
-         age = round(age)) 
+         age = interval(ymd(date_bth), ymd(date_flu)) %>% as.numeric('years'),
+         age = round(age)) %>% 
+  group_by(year, sex,  age, typ, sub) %>% 
+  summarise(css = n()) %>% 
+  ungroup()
 
 flu3 <- 
   flu2 %>% 
@@ -116,107 +120,7 @@ flu3 <-
 
 flu3 %>% 
   group_by(sub) %>% 
-  summarise(n())
+  summarise(sum(css))
 
-
-# H1 ====
-# ~~~~~~~
-h1 <- 
-  flu3 %>% 
-  filter(sub == "h1",
-         sex == "t") %>% 
-  group_by(cohort, sex) %>% 
-  summarise(css = sum(css),
-            pop = sum(pop)) %>% 
-  ungroup() %>% 
-  mutate(ins = 1e5 * css / pop)
-
-h1 %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, css))+
-  geom_line(aes(cohort, css))+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  theme_bw()+
-  labs(title = "H1")
-
-h1 %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, ins))+
-  geom_line(aes(cohort, ins))+
-  geom_vline(xintercept = c(1918, 1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  scale_y_log10()+
-  theme_bw()+
-  labs(title = "H1")
-
-
-# H3 ====
-# ~~~~~~~
-h3 <- 
-  flu3 %>% 
-  filter(sub == "h3",
-         sex == "t") %>% 
-  group_by(cohort, sex) %>% 
-  summarise(css = sum(css),
-            pop = sum(pop)) %>% 
-  ungroup() %>% 
-  mutate(ins = 1e5 * css / pop)
-
-h3 %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, css))+
-  geom_line(aes(cohort, css))+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  theme_bw()+
-  labs(title = "H3")
-
-h3 %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, ins))+
-  geom_line(aes(cohort, ins))+
-  geom_vline(xintercept = c(1918, 1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  scale_y_log10()+
-  theme_bw()+
-  labs(title = "H3")
-
-hs <- 
-  flu3 %>% 
-  filter(sub %in% c("h1", "h3"), sex == "t") %>% 
-  group_by(sub, cohort) %>% 
-  summarise(css = sum(css),
-            pop = sum(pop)) %>% 
-  ungroup() %>% 
-  mutate(mx = 1e5*css/pop) %>% 
-  group_by(sub) %>% 
-  mutate(cx_cs = css / sum(css),
-         cx_mx = mx / sum(mx)) %>% 
-  ungroup()
-
-hs %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, cx_cs, col = sub))+
-  geom_line(aes(cohort, cx_cs, col = sub))+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  theme_bw()+
-  labs(title = "cohort structure of infections")
-
-hs %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, cx_mx, col = sub))+
-  geom_line(aes(cohort, cx_mx, col = sub))+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  scale_y_log10()+
-  theme_bw()+
-  labs(title = "cohort structure of infection rates")
+write_rds(flu3, "data_inter/flu_data_brazil_exposures_2009_2019.rds")
 
