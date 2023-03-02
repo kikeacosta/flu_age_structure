@@ -1,9 +1,5 @@
 rm(list=ls())
-library(tidyverse)
-library(lubridate)
-library(ungroup)
-library(readxl)
-options(scipen=999)
+source("R/00_functions.R")
 
 # loading data ====
 # ~~~~~~~~~~~~~~~~~

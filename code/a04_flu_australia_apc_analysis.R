@@ -1,6 +1,6 @@
 rm(list=ls())
-options(scipen=999)
-libs <- c("tidyverse","haven","Epi", "MASS", "readxl", "writexl", "lubridate")
+source("R/00_functions.R")
+libs <- c("Epi", "MASS", "writexl")
 # for (i in libs){
 #   install.packages(i,character.only = TRUE)
 # }
