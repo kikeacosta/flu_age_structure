@@ -25,6 +25,10 @@ in18 <- read_delim("data_input/brazil/INFLUD18.csv", delim = ";")
 in19 <- read_delim("data_input/brazil/INFLUD19.csv", delim = ";")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+unique(in11$NU_IDADE_N) %>% sort()
+unique(in18$NU_IDADE_N) %>% sort()
+unique(in19$NU_IDADE_N) %>% sort()
+
 
 # ~~~~~~~~~~~~~~~~~~~
 # data 2009-2011 ====
@@ -42,12 +46,14 @@ colnames(in13) %>% sort()
 in09_112 <- 
   in09_11 %>% 
   select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, DT_SIN_PRI, 
-         DT_NASC, CS_SEXO,
+         DT_NASC, CS_SEXO, NU_IDADE_N,
          HOSPITAL, 
          PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
          PCR_TIPO_H, PCR_TIPO_N,
          VACINA, 
          EVOLUCAO, DT_OBITO)
+
+unique(in09_112$NU_IDADE_N) %>% sort()
 
 flu0911 <- 
   in09_112 %>% 
@@ -77,6 +83,8 @@ flu0911 <-
                              TRUE ~ "oth"),
          date_dth = dmy(DT_OBITO),
          sex = CS_SEXO %>% str_to_lower(),
+         age = case_when(NU_IDADE_N < 4000 ~ 0,
+                         NU_IDADE_N > 4000 ~ NU_IDADE_N - 4000),
          year = year(date_flu),
          vaccine = case_when(VACINA == 1 ~ "y",
                              VACINA == 2 ~ "n",
@@ -84,7 +92,8 @@ flu0911 <-
                              TRUE ~ "unk"),
          state = SG_UF_NOT) %>% 
   filter(flu == 1) %>% 
-  select(year, state, sex, date_bth, date_flu, typ, sub, outcome, date_dth, 
+  select(year, state, sex, age, date_bth, date_flu, typ, sub, 
+         outcome, date_dth, 
          date_not, vaccine)
 
 
@@ -104,6 +113,10 @@ flu0911 %>%
   group_by(year, vaccine) %>% 
   summarise(n = n())
 
+flu0911 %>% 
+  group_by(year, age) %>% 
+  summarise(n = n())
+
 # ~~~~~~~~~~~~~~~~~~~
 # data 2012-2018 ====
 # ~~~~~~~~~~~~~~~~~~~
@@ -111,7 +124,7 @@ flu0911 %>%
 in1218 <- 
   bind_rows(in12, in13, in14, in15, in16, in17, in18) %>% 
   select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, NU_ANO, DT_SIN_PRI, 
-         DT_NASC, CS_SEXO,
+         DT_NASC, CS_SEXO, NU_IDADE_N,
          HOSPITAL, 
          PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
          PCR_TIPO_H, PCR_TIPO_N,
@@ -176,13 +189,15 @@ flu1218 <-
                              TRUE ~ "oth"),
          date_dth = dmy(DT_OBITO),
          sex = CS_SEXO %>% str_to_lower(),
+         age = case_when(NU_IDADE_N < 4000 ~ 0,
+                         NU_IDADE_N > 4000 ~ NU_IDADE_N - 4000),
          year = year(date_flu),
          vaccine = case_when(VACINA == 1 ~ "y",
                              VACINA == 2 ~ "n",
                              VACINA == 9 ~ "unk",
                              TRUE ~ "unk")) %>% 
   filter(flu == 1) %>% 
-  select(year, sex, date_bth, date_flu, typ1, typ2, typ, sub1, sub2, sub, 
+  select(year, sex, age, date_bth, date_flu, typ1, typ2, typ, sub1, sub2, sub, 
          outcome, date_dth, date_not, vaccine) %>% 
   select(-sub1, -sub2, -typ1, -typ2)
 
@@ -200,6 +215,10 @@ flu1218 %>%
   group_by(year, typ, sub) %>% 
   summarise(n = n()) 
 
+flu1218 %>% 
+  group_by(year, age) %>% 
+  summarise(n = n()) 
+
 
 
 # ~~~~~~~~~~~~~~
@@ -209,7 +228,7 @@ flu1218 %>%
 in192 <- 
   in19 %>% 
   select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, DT_SIN_PRI, 
-         DT_NASC, CS_SEXO,
+         DT_NASC, CS_SEXO, NU_IDADE_N,
          HOSPITAL, 
          POS_PCRFLU,POS_IF_FLU, TP_FLU_IF,
          TP_FLU_PCR, PCR_FLUASU, FLUASU_OUT, PCR_FLUBLI, FLUBLI_OUT,
@@ -242,13 +261,14 @@ flu19 <-
                              TRUE ~ "oth"),
          date_dth = dmy(DT_EVOLUCA),
          sex = CS_SEXO %>% str_to_lower(),
+         age = NU_IDADE_N,
          year = year(date_flu),
          vaccine = case_when(VACINA == 1 ~ "y",
                              VACINA == 2 ~ "n",
                              VACINA == 9 ~ "unk",
                              TRUE ~ "unk")) %>% 
   filter(flu == 1) %>% 
-  select(year, sex, date_bth, date_flu, date_not, typ, sub, outcome, date_dth, vaccine)
+  select(year, sex, age, date_bth, date_flu, date_not, typ, sub, outcome, date_dth, vaccine)
 
 flu19 %>% 
   group_by(year, typ) %>% 
@@ -266,11 +286,21 @@ flu19 %>%
   group_by(vaccine) %>% 
   summarise(n = n())
 
+flu19 %>% 
+  group_by(age) %>% 
+  summarise(n = n())
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~
 # All data together ====
 # ~~~~~~~~~~~~~~~~~~~~~~
 flu <- 
   bind_rows(flu0911, flu1218, flu19)
+
+test <- 
+  flu %>% 
+  group_by(year, age) %>% 
+  summarise(n = n())
+
 
 write_rds(flu, "data_inter/flu_data_brazil_2009_2019.rds")

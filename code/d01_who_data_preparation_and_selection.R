@@ -1,7 +1,6 @@
 rm(list=ls())
 source("code/00_functions.R")
 
-
 epi <- read_csv("data_input/VIW_FID_EPI.csv")
 
 epi2 <- 
@@ -10,7 +9,7 @@ epi2 <-
          date = ISO_WEEKSTARTDATE,
          year = ISO_YEAR,
          week = ISO_WEEK,
-         age = AGEGROUP_CODE,
+         age_label = AGEGROUP_CODE,
          ili_css = ILI_CASES,
          ili_pts = ILI_OUTPATIENTS,
          ili_pop_cov = ILI_POP_COV, 
@@ -30,62 +29,72 @@ flu2 <-
          h1 = AH1N12009,
          h1pre = AH1, 
          h3 = AH3,
-         h5 = AH5,
-         h7 = AH7N9,
-         a_non_sub = ANOTSUBTYPED,
-         a_imp_sub = ANOTSUBTYPABLE,
-         a_other = AOTHER_SUBTYPE,
          inf_a = INF_A,
          inf_b = INF_B,
+         inf = INF_ALL,
+         inf_neg = INF_NEGATIVE,
+         ade = ADENO,
+         boc = BOCA,
+         cor = HUMAN_CORONA,
+         met = METAPNEUMO,
+         par = PARAINFLUENZA,
+         rhn = RHINO,
          rsv = RSV,
-         inf_all = INF_ALL,
-         css_neg = INF_NEGATIVE,
-         css = SPEC_PROCESSED_NB,
+         oth = OTHERRESPVIRUS,
          ili = ILI_ACTIVITY) %>% 
   gather(-code, -source, -date, -year, -week, key = measure, value = value) %>% 
   replace_na(list(value = 0)) %>% 
-  spread(measure, value)
+  spread(measure, value) %>% 
+  mutate(
+    # # adjusting for flu infections
+    inf = ifelse(inf > inf_a + inf_b, inf, inf_a + inf_b), 
+    # number of samples with positive
+    vir = inf + rsv + ade + boc + cor + met + par + rhn + oth,
+    # number of H3 and H1 infections
+    h1h3 = h1 + h3,
+    p_h1 = h1 / vir,
+    p_h3 = h3 / vir,
+    p_inf = inf / vir)
 
 flu3 <- 
   flu2 %>% 
-  mutate(h1h3 = h1+h3,
-         css_pos = css - css_neg,
-         ph1 = ifelse(css_pos > 0, h1 / css_pos, 0),
-         ph3 = ifelse(css_pos > 0, h3 / css_pos, 0),
-         ph1h3 = h1h3 / css_pos)
+  filter(p_h1 >= 0.7 | p_h3 >= 0.7,
+         h1h3 >= 200) %>% 
+  select(code, year, week, inf, h1, h3, p_h1, p_h3) %>% 
+  unique()
 
-# %>% 
-#   mutate(css_all = css_neg + inf_all)
+sel_combs <- 
+  flu3 %>% 
+  select(code, year, week) %>% 
+  unique()
 
-# test <- 
-#   flu_sub %>% 
-#   group_by(code, source, date, year, week, measure) %>% 
-#   summarise(n = n()) %>% 
-#   ungroup()
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ilis <- 
+  epi2 %>% 
+  inner_join(sel_combs)
+
+unique(ilis$code)
+
+ilis2 <- 
+  ilis %>% 
+  mutate(age_lab2 = age_label) %>% 
+  separate(age_lab2, c("age", "age_up"), sep = "TO") %>% 
+  mutate(age = age %>% as.double(),
+         age_up = age_up %>% as.double(),
+         age = ifelse(age < 1, age * 10, age),
+         age_up = ifelse(age_up < 1, age_up * 10, age_up),
+         age_spn = age_up - age + 1) %>% 
+  replace_na(list(ili_css = 0,
+                  ili_pts = 0,
+                  ili_pop_cov = 0, 
+                  sari_css = 0, 
+                  sari_pts = 0)) %>% arrange(code, date) %>% 
+  group_by(code, date) %>% 
+  mutate(age_grs = n()) %>% 
+  ungroup() %>% 
+  mutate(ili = ili_css + ili_pts,
+         sari = sari_css + sari_pts) %>% 
+  arrange(code, date, age)
 
 
-
-# %>% 
-#   spread(measure, value)
-#   mutate(
-#     ph10 = h1 / (h1 + h3),
-#     ph12 = h1 / inf_a,
-#     ph13 = h1 / all_inf,
-#     ph33 = h3 / all_inf)
-
-test1 <- 
-  flu_sub %>% 
-  filter(all_inf != inf_a + inf_b)
-
-test <- 
-  flu_sub %>% 
-  filter((ph13 > 0.9 & ph13 <= 1) | (ph33 > 0.9 & ph33 <= 1))
-
-
-# 
-
-
-
-
-
-     

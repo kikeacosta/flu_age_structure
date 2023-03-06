@@ -83,14 +83,14 @@ flu0 <-
   mutate(cohort = year(date_bth),
          age = year - cohort) %>% 
   group_by(date_flu, sub) %>% 
-  summarise(css = n()) %>% 
+  summarise(value = n()) %>% 
   ungroup() 
 
 # 
 flu0 %>% 
   filter(sub %in% c("h1", "h3")) %>% 
   ggplot()+
-  geom_line(aes(date_flu, css, col = sub))+
+  geom_line(aes(date_flu, value, col = sub))+
   theme_bw()
 
 
@@ -98,34 +98,62 @@ flu0 %>%
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 flu2 <- 
   flu %>% 
-  mutate(cohort = year(date_bth),
-         age = interval(ymd(date_bth),ymd(date_flu)) %>% as.numeric('years'),
-         age = round(age)) 
+  filter(sub %in% c("h1", "h3", "b")) %>% 
+  mutate(age2 = interval(ymd(date_bth), ymd(date_flu)) %>% as.numeric('years'),
+         age2 = round(age2),
+         age = ifelse(is.na(age), age2, age)) %>% 
+  select(-age2) %>% 
+  group_by(year, sex, age, sub, outcome) %>% 
+  summarise(value = n()) %>% 
+  ungroup() %>% 
+  drop_na(age)
+
+css <- 
+  flu2 %>% 
+  group_by(year, sex, age, sub) %>% 
+  summarise(value = sum(value)) %>% 
+  ungroup() %>% 
+  mutate(outcome = "cases")
+
+dts <- 
+  flu2 %>% 
+  filter(outcome == "death_flu") %>% 
+  group_by(year, sex, age, sub) %>% 
+  summarise(value = sum(value)) %>% 
+  ungroup() %>% 
+  mutate(outcome = "deaths")
+
 
 flu3 <- 
-  flu2 %>% 
-  group_by(year, age, typ, sub) %>% 
-  summarise(css = sum(css)) %>% 
+  bind_rows(dts, css) %>% 
+  group_by(year, age, outcome, sub) %>% 
+  summarise(value = sum(value)) %>% 
   ungroup() %>% 
   mutate(sex = "t") %>% 
-  bind_rows(flu2) %>% 
+  bind_rows(dts, css) %>% 
   mutate(cohort = year - age) %>% 
   left_join(pop3) %>% 
   drop_na(age) %>% 
-  mutate(ins = 1e5*css / pop)
+  mutate(mx = 1e5 * value / pop)
 
 flu3 %>% 
-  group_by(sub) %>% 
-  summarise(n())
+  filter(sex == "t") %>% 
+  group_by(sub, outcome) %>% 
+  summarise(sum(value))
 
 write_rds(flu3, "data_inter/flu_data_brazil_exposures_2009_2019.rds")
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+flu3 <- read_rds("data_inter/flu_data_brazil_exposures_2009_2019.rds")
 
 # H1 ====
 # ~~~~~~~
 h1 <- 
   flu3 %>% 
   filter(sub == "h1",
-         sex == "t") %>% 
+         sex == "t",
+         outcome == "deaths") %>% 
   group_by(cohort, sex) %>% 
   summarise(css = sum(css),
             pop = sum(pop)) %>% 
@@ -159,7 +187,8 @@ h1 %>%
 h3 <- 
   flu3 %>% 
   filter(sub == "h3",
-         sex == "t") %>% 
+         sex == "t",
+         outcome == "death") %>% 
   group_by(cohort, sex) %>% 
   summarise(css = sum(css),
             pop = sum(pop)) %>% 

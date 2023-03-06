@@ -5,7 +5,8 @@ library(ungroup)
 library(readxl)
 library(viridis)
 options(scipen=999)
-seed(2019)
+set.seed(2019) 
+# seed(2019)
 
 
 # ### Most of this function is an adaptation of the apc.fit function from the Epi package (Carstensen 2019, https://CRAN.R-project.org/package=Epi)
