@@ -32,19 +32,24 @@ sub = "h1"
 num <- "cases"
 den <- "population"
 
-# size of categories
-gr <- 1
-# ages
-amin <- 0;
-amax <- 85;
-# periods (maximum 2014, because the first group includes seasonal years 1959-60 & 1960-61, so
-# the group includes the seasonal periods 2013-14 & 2014-15, thus, seasonal period 2015-16 is excluded)
-pmin <- 2009; 
-pmax <- 2019; 
-# distribution
-dist <- "nb"
-# drift extraction (consult Crastensen material)
-extr <- "n" 
+{
+  # size of categories
+  gr <- 1
+  # ages
+  amin <- 0;
+  amax <- 85;
+  # periods (maximum 2014, because the first group includes seasonal years 1959-60 & 1960-61, so
+  # the group includes the seasonal periods 2013-14 & 2014-15, thus, seasonal period 2015-16 is excluded)
+  pmin <- 2009; 
+  pmax <- 2019; 
+  
+  
+  
+  # distribution
+  dist <- "nb"
+  # drift extraction (consult Crastensen material)
+  extr <- "n" 
+}
 
 parm="APC"; mod="factor";
 dr.extr="n";
@@ -311,14 +316,35 @@ apc_acp <-
              drift=drift[1,1],
              dimension = factor(dimension, levels = c("Age", "Period", "Cohort")))
     
-    return(apc_out)
+    plot_cohort <- 
+      apc_out %>% 
+      filter(dimension == "Cohort",
+             Years %in% 1930:2016) %>% 
+      ggplot()+
+      geom_line(aes(Years, value))+
+      geom_ribbon(aes(Years, ymin = ll, ymax = ul), 
+                  alpha = 0.3)+
+      geom_hline(yintercept = 1, linetype = "dashed")+
+      geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype = "dashed", col = "blue")+
+      annotate("text", 
+               y = 1, 
+               x = c(1947, 1957, 1968, 1978, 2009), 
+               label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
+               angle = 90, hjust = 1, vjust = 0, size = 3)+
+      scale_x_continuous(breaks = seq(1910, 2010, 10))+
+      scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1, 2, 5))+
+      labs(x = "Cohort", title = paste0(sb, ", ", nm, "/", dn))+
+      theme_bw()
+      
+      
+    return(list(apc_out, plot_cohort))
   }
 
 
-# h1 effects
-# ~~~~~~~~~~
+# cohort effects for incidence, mortality and CFR
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 {
-  ## Cohort detrended model 
+  # incidence
   apc_h1_incid <- 
     apc_acp(sx = "t", sb = "h1", 
             nm = "cases", dn = "population",
@@ -327,6 +353,7 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  # mortality
   apc_h1_death <- 
     apc_acp(sx = "t", sb = "h1", 
             nm = "deaths", dn = "population",
@@ -335,6 +362,16 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  # cfr
+  apc_h1_cfr <- 
+    apc_acp(sx = "t", sb = "h1", 
+            nm = "deaths", dn = "cases",
+            gr = 2,
+            amn = 5, 
+            amx = 85, 
+            parm = "APC", dr.extr = extr)
+  
+  # incidence
   apc_h3_incid <- 
     apc_acp(sx = "t", sb = "h3", 
             nm = "cases", dn = "population",
@@ -343,6 +380,7 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  # mortality
   apc_h3_death <- 
     apc_acp(sx = "t", sb = "h3", 
             nm = "deaths", dn = "population",
@@ -351,211 +389,52 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  # cfr
+  apc_h3_cfr <- 
+    apc_acp(sx = "t", sb = "h3", 
+            nm = "deaths", dn = "cases",
+            gr = 2,
+            amn = 5, 
+            amx = 85, 
+            parm = "APC", dr.extr = extr)
+} 
   
-  apc_incid <- 
-    apc_h1_incid %>% 
-    select(Years, rr_h1 = value, dimension) %>% 
-    left_join(apc_h3_incid %>% 
-                select(Years, rr_h3 = value, dimension)) %>% 
-    mutate(rh1h3 = rr_h1 / rr_h3)
-  
-  apc_incid %>% 
-    filter(dimension == "Cohort",
-           Years %in% 1930:2016) %>% 
-    ggplot()+
-    geom_line(aes(Years, rh1h3))+
-    geom_hline(yintercept = 1, linetype = "dashed")+
-    geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype = "dashed", col = "blue")+
-    annotate("text", 
-             y = 1, 
-             x = c(1947, 1957, 1968, 1978, 2009), 
-             label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
-             angle = 90, hjust = 1, vjust = 0, size = 3)+
-    scale_x_continuous(breaks = seq(1910, 2010, 10))+
-    scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1, 2, 5))+
-    labs(x = "Cohort", title = "ratio H1N1 / H3N2")+
-    theme_bw()
+# ratios H1/H3 for cohort effects
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+apc_incid <- 
+  apc_h1_incid[[1]] %>% 
+  select(Years, rr_h1 = value, dimension) %>% 
+  left_join(apc_h3_incid[[1]] %>% 
+              select(Years, rr_h3 = value, dimension)) %>% 
+  mutate(rh1h3 = rr_h1 / rr_h3)
 
-  
-  ## Drift value (equal in both models)
-  apc_h1_incid$drift[1] - 1
-  apc_h1_death$drift[1] - 1
-  apc_h3_incid$drift[1] - 1
-  apc_h3_death$drift[1] - 1
-  
-  ## Plot of cohort effects
-  apc_h1_incid %>% 
-    filter(dimension == "Cohort",
-           model == "APC",
-           Years %in% 1930:2016) %>% 
-    ggplot()+
-    geom_line(aes(Years, value))+
-    geom_ribbon(aes(Years, ymin = ll, ymax = ul), 
-                alpha = 0.3)+
-    geom_hline(yintercept = 1, linetype = "dashed")+
-    geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype = "dashed", col = "blue")+
-    annotate("text", 
-             y = 1, 
-             x = c(1947, 1957, 1968, 1978, 2009), 
-             label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
-             angle = 90, hjust = 1, vjust = 0, size = 3)+
-    scale_x_continuous(breaks = seq(1910, 2010, 10))+
-    scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1, 2, 5))+
-    labs(x = "Cohort", title = "H1N1")+
-    theme_bw()
-  
-  ## Plot of cohort effects
-  apc_h1_death %>% 
-    filter(dimension == "Cohort",
-           model == "APC",
-           Years %in% 1930:2016) %>% 
-    ggplot()+
-    geom_line(aes(Years, value))+
-    geom_ribbon(aes(Years, ymin = ll, ymax = ul), 
-                alpha = 0.3)+
-    geom_hline(yintercept = 1, linetype = "dashed")+
-    geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype = "dashed", col = "blue")+
-    annotate("text", 
-             y = 1, 
-             x = c(1947, 1957, 1968, 1978, 2009), 
-             label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
-             angle = 90, hjust = 1, vjust = 0, size = 3)+
-    scale_x_continuous(breaks = seq(1910, 2010, 10))+
-    scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1, 2, 5))+
-    labs(x = "Cohort", title = "H1N1")+
-    theme_bw()
-  
-  coh_per_apc %>% 
-    filter(model == "APC") %>% 
-    ggplot()+
-    geom_line(aes(Years, value))+
-    geom_ribbon(aes(Years, ymin = ll, ymax = ul), 
-                alpha = 0.3)+
-    geom_hline(yintercept = 1, linetype = "dashed")+
-    scale_x_continuous()+
-    scale_y_log10()+
-    facet_grid(~dimension, scales = "free", space = "free")+
-    labs(x = "Cohort", title = "H1N1")+
-    theme_bw()
-  
-  ggsave("figures/brazil_cohort_effects_H1N1_deaths.png",
-         w = 8, h = 4)
-  
-}
-
-
-# h3 effects
-# ~~~~~~~~~~
-{
-  ## Cohort detrended model 
-  coh_per_apc <- 
-    apc_acp(sb = "h3", ot = "death",
-            amn = amin, amx = amax, parm = "APC", dr.extr = extr)
-  
-  ## Period detrended model 
-  coh_per_acp <- 
-    apc_acp(sb = "h3", ot = "death",
-            amn = amin, amx = amax, parm = "ACP", dr.extr = extr)
-  
-  ## Drift value (equal in both models)
-  coh_per_apc$drift[1]
-  coh_per_acp$drift[1]
-  
-  ## Plot of cohort effects
-  rr_dt <- 
-    coh_per_apc %>% 
-    bind_rows(coh_per_acp) %>% 
-    mutate(rr = exp(Coefficient),
-           rr_l = exp(ll),
-           rr_u = exp(ul))
-  
-  rr_dt %>% 
-    filter(Effect=="Cohort",
-           model == "APC") %>% 
-    ggplot()+
-    geom_ribbon(aes(Years, ymin = rr_l, ymax = rr_u), 
-                alpha = 0.3)+
-    geom_line(aes(Years, rr))+
-    geom_hline(yintercept = 1, linetype = "dashed")+
-    geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype = "dashed", col = "blue")+
-    annotate("text", 
-             y = 1, 
-             x = c(1947, 1957, 1968, 1978, 2009), 
-             label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
-             angle = 90, hjust = 1, vjust = 0, size = 3)+
-    scale_y_log10(breaks = c(0.3, 0.5, 1, 2, 3))+
-    scale_x_continuous(breaks = seq(1910, 2010, 10))+
-    labs(x = "Cohort", title = "H3N2")+
-    theme_bw()
-  ggsave("figures/brazil_cohort_effects_H3N2_deaths.png",
-         w = 8, h = 4)
-}
-
-# b effects
-# ~~~~~~~~~~
-{
-  ## Cohort detrended model 
-  coh_per_apc <- 
-    apc_acp(sb = "b", ot = "death",
-            amn = amin, amx = amax, parm = "APC", dr.extr = extr)
-  
-  ## Period detrended model 
-  coh_per_acp <- 
-    apc_acp(sb = "b", ot = "death",
-            amn = amin, amx = amax, parm = "ACP", dr.extr = extr)
-  
-  ## Drift value (equal in both models)
-  coh_per_apc$drift[1]
-  coh_per_acp$drift[1]
-  
-  ## Plot of cohort effects
-  rr_dt <- 
-    coh_per_apc %>% 
-    bind_rows(coh_per_acp) %>% 
-    mutate(rr = exp(Coefficient),
-           rr_l = exp(ll),
-           rr_u = exp(ul))
-  
-  rr_dt %>% 
-    filter(Effect=="Cohort",
-           model == "APC") %>% 
-    ggplot()+
-    geom_line(aes(Years, rr))+
-    geom_ribbon(aes(Years, ymin = rr_l, ymax = rr_u), 
-                alpha = 0.3)+
-    geom_hline(yintercept = 1, linetype = "dashed")+
-    geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype = "dashed", col = "blue")+
-    annotate("text", 
-             y = 1, 
-             x = c(1947, 1957, 1968, 1978, 2009), 
-             label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
-             angle = 90, hjust = 1, vjust = 0, size = 3)+
-    scale_x_continuous(breaks = seq(1910, 2010, 10))+
-    scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1, 2, 5))+
-    labs(x = "Cohort", title = "H1N1")+
-    theme_bw()
-  
-  ggsave("figures/brazil_cohort_effects_B_deaths.png",
-         w = 8, h = 4)
-  
-}
-
-
-coeffs_dt %>% 
-  filter(Effect=="Cohort") %>% 
-  mutate(Coefficient = Coefficient*-1) %>% 
+apc_incid %>% 
+  filter(dimension == "Cohort",
+         Years %in% 1930:2016) %>% 
   ggplot()+
-  geom_line(aes(Years, Coefficient, linetype=model))+
-  geom_hline(yintercept = 0, linetype = "dashed")+
+  geom_line(aes(Years, rh1h3))+
+  geom_hline(yintercept = 1, linetype = "dashed")+
   geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype = "dashed", col = "blue")+
   annotate("text", 
-           y = 0, 
+           y = 1, 
            x = c(1947, 1957, 1968, 1978, 2009), 
            label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
            angle = 90, hjust = 1, vjust = 0, size = 3)+
   scale_x_continuous(breaks = seq(1910, 2010, 10))+
-  labs(x = "Cohort", title = "H3N2")+
+  scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1, 2, 5))+
+  labs(x = "Cohort", title = "ratio H1N1 / H3N2")+
   theme_bw()
+
+
+  apc_h1_death[[1]] %>% 
+    ggplot()+
+    geom_line(aes(Years, value))+
+    scale_y_log10()+
+    facet_grid(~dimension, scales = "free", space = "free")+
+    geom_hline(yintercept = 1, linetype = "dashed")+
+    theme_bw()
+
+
 
 
 detach(package:MASS)
