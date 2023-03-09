@@ -14,8 +14,8 @@ flu %>%
 
 flu %>% 
   group_by(year, sub) %>% 
-  summarise(css = sum(css)) %>% 
-  spread(sub, css)
+  summarise(value = sum(value)) %>% 
+  spread(sub, value)
 
 # H1 ====
 # ~~~~~~~
