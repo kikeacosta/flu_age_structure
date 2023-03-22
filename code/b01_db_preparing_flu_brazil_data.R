@@ -128,7 +128,7 @@ in1218 <-
          HOSPITAL, 
          PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
          PCR_TIPO_H, PCR_TIPO_N,
-         VACINA,
+         VACINA, DT_UT_DOSE,
          EVOLUCAO, DT_OBITO)
 
 flu1218 <- 
@@ -181,6 +181,7 @@ flu1218 <-
          date_bth = dmy(DT_NASC),
          date_flu = dmy(DT_SIN_PRI),
          date_not = dmy(DT_NOTIFIC),
+         date_vac = dmy(DT_UT_DOSE),
          outcome = case_when(EVOLUCAO == 1 ~ "survived",
                              EVOLUCAO == 2 ~ "death_flu",
                              EVOLUCAO == 3 ~ "death_oth",
@@ -198,7 +199,7 @@ flu1218 <-
                              TRUE ~ "unk")) %>% 
   filter(flu == 1) %>% 
   select(year, sex, age, date_bth, date_flu, typ1, typ2, typ, sub1, sub2, sub, 
-         outcome, date_dth, date_not, vaccine) %>% 
+         outcome, date_dth, date_not, vaccine, date_vac) %>% 
   select(-sub1, -sub2, -typ1, -typ2)
 
 flu1218 %>% 
@@ -232,7 +233,7 @@ in192 <-
          HOSPITAL, 
          POS_PCRFLU,POS_IF_FLU, TP_FLU_IF,
          TP_FLU_PCR, PCR_FLUASU, FLUASU_OUT, PCR_FLUBLI, FLUBLI_OUT,
-         VACINA,
+         VACINA, DT_UT_DOSE,
          EVOLUCAO, DT_EVOLUCA)
 
 flu19 <- 
@@ -249,6 +250,7 @@ flu19 <-
          date_bth = dmy(DT_NASC),
          date_flu = dmy(DT_SIN_PRI),
          date_not = dmy(DT_NOTIFIC),
+         date_vac = dmy(DT_UT_DOSE),
          flu = ifelse(POS_PCRFLU == 1 | 
                              typ != "other" | 
                              sub != "other", 
@@ -268,7 +270,7 @@ flu19 <-
                              VACINA == 9 ~ "unk",
                              TRUE ~ "unk")) %>% 
   filter(flu == 1) %>% 
-  select(year, sex, age, date_bth, date_flu, date_not, typ, sub, outcome, date_dth, vaccine)
+  select(year, sex, age, date_bth, date_flu, date_not, typ, sub, outcome, date_dth, vaccine, date_vac)
 
 flu19 %>% 
   group_by(year, typ) %>% 
