@@ -42,6 +42,7 @@ colnames(in10) %>% sort()
 colnames(in11) %>% sort()
 colnames(in12) %>% sort()
 colnames(in13) %>% sort()
+colnames(in18) %>% sort()
 
 in09_112 <- 
   in09_11 %>% 
@@ -306,3 +307,16 @@ test <-
 
 
 write_rds(flu, "data_inter/flu_data_brazil_2009_2019.rds")
+
+
+
+vac_date <- 
+  flu %>% 
+  filter(year %in% 2013:2019) %>% 
+  mutate(test = ifelse(is.na(date_vac), "n", "y")) %>% 
+  group_by(year, test) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  spread(test, n)
+
+# table(vac_date$is_vac_date)
