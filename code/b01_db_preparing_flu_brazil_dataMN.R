@@ -1,0 +1,460 @@
+rm(list=ls())
+library(tidyverse)
+library(lubridate)
+library(ungroup)
+library(readxl)
+options(scipen=999)
+
+# Brazil
+
+# data on flu survellance
+# Banco de Dados de Síndrome Respiratória Aguda Grave
+# Notificações de Síndrome Gripal
+# https://opendatasus.saude.gov.br/organization/ministerio-da-saude
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+in09 <- read_delim("data_input/brazil/INFLUD09.csv", delim = ";")
+in10 <- read_delim("data_input/brazil/INFLUD10.csv", delim = ";")
+in11 <- read_delim("data_input/brazil/INFLUD11.csv", delim = ";")
+in12 <- read_delim("data_input/brazil/INFLUD12.csv", delim = ";")
+in13 <- read_delim("data_input/brazil/INFLUD13.csv", delim = ";")
+in14 <- read_delim("data_input/brazil/INFLUD14.csv", delim = ";")
+in15 <- read_delim("data_input/brazil/INFLUD15.csv", delim = ";")
+in16 <- read_delim("data_input/brazil/INFLUD16.csv", delim = ";")
+in17 <- read_delim("data_input/brazil/INFLUD17.csv", delim = ";")
+in18 <- read_delim("data_input/brazil/INFLUD18.csv", delim = ";")
+in19 <- read_delim("data_input/brazil/INFLUD19.csv", delim = ";")
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+unique(in11$NU_IDADE_N) %>% sort()
+unique(in18$NU_IDADE_N) %>% sort()
+unique(in19$NU_IDADE_N) %>% sort()
+
+
+# ~~~~~~~~~~~~~~~~~~~
+# data 2009-2011 ====
+# ~~~~~~~~~~~~~~~~~~~
+
+
+in09_11 <- 
+  bind_rows(in09, in10, in11)
+
+colnames(in09) %>% sort()
+colnames(in10) %>% sort()
+colnames(in11) %>% sort()
+colnames(in12) %>% sort()
+colnames(in13) %>% sort()
+
+in09_112 <- 
+  in09_11 %>% 
+  select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, DT_SIN_PRI, 
+         DT_NASC, CS_SEXO, NU_IDADE_N,
+         HOSPITAL, 
+         PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
+         PCR_TIPO_H, PCR_TIPO_N,
+         VACINA, 
+         EVOLUCAO, DT_OBITO,
+         HEMA_ETIOL, HEM_TIPO_H)
+
+
+unique(in09_112$NU_IDADE_N) %>% sort()
+
+# MN: checking NAs
+
+in09_112 %>% 
+  mutate(date_flu = dmy(DT_SIN_PRI),
+         year = year(date_flu)) %>% 
+  group_by(year,PCR_ETIOL) %>% 
+  summarise(n = n()) %>% 
+  mutate(rel.freq =  scales::percent(n/sum(n), accuracy = 0.1)) 
+
+# MN: Over the years of 2009 to 2011, the on average 74% of individuals did not do the PCR test
+# the good news is that the % of NAs kept constant over these years 
+
+in09_112_NA <-in09_112 %>% 
+  mutate(date_bth = dmy(DT_NASC),
+         year_bth = year(date_bth)) %>% 
+  group_by(year_bth,PCR_ETIOL) %>% 
+  summarise(n = n()) %>% 
+  mutate(rel.freq = n/sum(n)) 
+
+in09_112_NA %>% 
+  filter(year_bth>=1930, 
+         is.na(PCR_ETIOL)) %>% 
+  ggplot(aes(year_bth,rel.freq)) +
+  geom_line()+
+  geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype="dashed", color = "blue")+
+  annotate("text", 
+           y = 0.8, 
+           x = c(1947, 1957, 1968, 1978, 2009), 
+           label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
+           angle = 90, hjust = 1, vjust = 0, size = 3)+
+  labs(x = "Cohort", title = "Proportion of NAs in the varible to identify the type of Influenza, dataset 2009-2011")+
+  ylim(0.65,1) +
+  theme_bw()
+
+ggsave (paste0("figures/","NAs_2009-2012.pdf"), 
+        plot = last_plot() , width = 8, height = 5, units = "in")
+
+# preliminary analysis
+# MN: it is interesting to see in the figure below that the number of cases that for instance, 
+# increased between the birth cohorts of 1947 and 1957 can be partially explained by the reduction of
+# about 7% of NAs
+
+
+# MN: Included the variables HEMA_Etiol and HEMA_tipo_H to define the type and subtype of influenza 
+flu0911 <- 
+  in09_112 %>% 
+  mutate(typ = case_when(PCR_ETIOL == 1 ~ "new",
+                         PCR_ETIOL == 2 ~ "a",
+                         PCR_ETIOL == 3 ~ "b",
+                         PCR_ETIOL == 4 ~ "av",
+                         #HEMA_ETIOL == 1 ~ "new",
+                         #HEMA_ETIOL == 2 ~ "a",
+                         #HEMA_ETIOL == 3 ~ "b",
+                         #HEMA_ETIOL == 4 ~ "av",
+                         TRUE ~ "other"),
+         sub = case_when(PCR_TIPO_H == 1 ~ "h1",
+                         PCR_TIPO_H == 3 ~ "h3",
+                         PCR_ETIOL == 3 ~ "b",
+                         #HEM_TIPO_H == 1 ~ "h1",
+                         #HEM_TIPO_H == 3 ~ "h3",
+                         #HEM_TIPO_H == 3 ~ "b",
+                         TRUE ~ "other"),
+         typ = case_when(sub %in% c("h1", "h3") ~ "a",
+                         sub %in% c("b") ~ "b",
+                         TRUE ~ typ),
+         pcr_test = ifelse(!is.na(PCR_ETIOL) & PCR_ETIOL %in% 1:4, 1, 0),
+         flu = ifelse((pcr_test == 1 | typ != "other" | sub != "other"), 1, 0),
+         date_bth = dmy(DT_NASC),
+         date_flu = dmy(DT_SIN_PRI),
+         # date_vac = dmy(DT_UT_DOSE),
+         date_not = dmy(DT_NOTIFIC),
+         outcome = case_when(EVOLUCAO == 1 ~ "survived",
+                             EVOLUCAO == 2 ~ "death_flu",
+                             EVOLUCAO == 3 ~ "death_oth",
+                             EVOLUCAO == 4 ~ "death_inv",
+                             EVOLUCAO == 5 ~ "missing",
+                             TRUE ~ "oth"),
+         date_dth = dmy(DT_OBITO),
+         sex = CS_SEXO %>% str_to_lower(),
+         age = case_when(NU_IDADE_N < 4000 ~ 0,
+                         NU_IDADE_N > 4000 ~ NU_IDADE_N - 4000),
+         year = year(date_flu),
+         vaccine = case_when(VACINA == 1 ~ "y",
+                             VACINA == 2 ~ "n",
+                             VACINA == 9 ~ "unk",
+                             TRUE ~ "unk"),
+         state = SG_UF_NOT) %>% 
+  filter(flu == 1) %>% 
+  select(year, state, sex, age, date_bth, date_flu, typ, sub, 
+         outcome, date_dth, 
+         date_not, vaccine)
+# MN: The inclusion of other tests to detect the type and subtype of influenza changed just a little the number
+# In my opinion doesn't worth to include them. Moreover, in the dataset of 2019 it is not possible to identify
+# the subtype from the IF tests
+
+flu0911 %>% 
+  group_by(year, sub) %>% 
+  summarise(n = n())
+
+flu0911 %>% 
+  group_by(year, typ) %>% 
+  summarise(n = n())
+
+flu0911 %>% 
+  group_by(year, outcome) %>% 
+  summarise(n = n())
+
+flu0911 %>% 
+  group_by(year, vaccine) %>% 
+  summarise(n = n())
+
+flu0911 %>% 
+  group_by(year, age) %>% 
+  summarise(n = n())
+
+
+# ~~~~~~~~~~~~~~~~~~~
+# data 2012-2018 ====
+# ~~~~~~~~~~~~~~~~~~~
+
+in1218 <- 
+  bind_rows(in12, in13, in14, in15, in16, in17, in18) %>% 
+  select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, NU_ANO, DT_SIN_PRI, 
+         DT_NASC, CS_SEXO, NU_IDADE_N,
+         HOSPITAL, 
+         PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
+         PCR_TIPO_H, PCR_TIPO_N,
+         VACINA, DT_UT_DOSE,
+         EVOLUCAO, DT_OBITO)
+
+# MN: checking NAs
+
+in1218 %>% 
+  mutate(date_flu = dmy(DT_SIN_PRI),
+         year = year(date_flu)) %>% 
+  group_by(year,RES_FLUASU) %>% 
+  summarise(n = n()) %>% 
+  mutate(rel.freq =  scales::percent(n/sum(n), accuracy = 0.1)) 
+
+# MN: Maybe I did something wrong, but in 2012 98.7% of the variable RES_FLUASU is NA
+
+in1218_NA <-in1218 %>% 
+  mutate(date_bth = dmy(DT_NASC),
+         year_bth = year(date_bth),
+         date_flu = dmy(DT_SIN_PRI),
+         year = year(date_flu)) %>% 
+  #filter(year!=2012) %>% 
+  group_by(year_bth,RES_FLUASU) %>% 
+  summarise(n = n()) %>% 
+  mutate(rel.freq = n/sum(n)) 
+
+in1218_NA %>% 
+  filter(year_bth>=1930, 
+         is.na(RES_FLUASU)) %>% 
+  ggplot(aes(year_bth,rel.freq)) +
+  geom_line()+
+  geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype="dashed", color = "blue")+
+  annotate("text", 
+           y = 0.99, 
+           x = c(1947, 1957, 1968, 1978, 2009), 
+           label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
+           angle = 90, hjust = 1, vjust = 0, size = 3)+
+  labs(x = "Cohort", title = "Proportion of NAs in the varible to identify the type of Influenza, dataset 2012-2018")+
+  ylim(0.65,1) +
+  theme_bw()
+
+ggsave (paste0("figures/","NAs_2012-2018.pdf"), 
+        plot = last_plot() , width = 8, height = 5, units = "in")
+
+flu1218 <- 
+  in1218 %>% 
+  mutate(sub1 = case_when(PCR_TIPO_H == 1 ~ "h1",
+                          PCR_TIPO_H == 3 ~ "h3",
+                          TRUE ~ "other"),
+         sub2 = case_when(RES_FLUASU == 1 ~ "h1",
+                          RES_FLUASU == 2 ~ "h1pre",
+                          RES_FLUASU == 3 ~ "h3",
+                          RES_FLUASU == 4 ~ "an",
+                          RES_FLUASU == 5 ~ "h3v",
+                          RES_FLUASU == 6 ~ "ao",
+                          RES_FLUB == 1 ~ "b",
+                          TRUE ~ "other"),
+         sub = case_when(sub1 != "other" & sub2 == "other" ~ sub1,
+                         sub1 == "other" & sub2 != "other" ~ sub2,
+                         (sub1 == "h1" | sub2 == "h1") & (sub2 != "h1pre") ~ "h1",
+                         sub2 == "h1pre" ~ "h1pre",
+                         (sub1 == "h3" | sub2 == "h3") & (sub2 != "h3v") ~ "h3",
+                         sub2 == "h3v" ~ "h3v",
+                         sub1 == "b" | sub2 == "b" ~ "b",
+                         TRUE ~ sub2),
+         typ1 = case_when(PCR_ETIOL == 1 ~ "new",
+                          PCR_ETIOL == 2 ~ "a",
+                          PCR_ETIOL == 3 ~ "b",
+                          PCR_ETIOL == 4 ~ "av",
+                          TRUE ~ "other"),
+         typ2 = case_when(RES_FLUA == 1 ~ "a",
+                          RES_FLUB == 1 ~ "b",
+                          TRUE ~ "other"),
+         typ = case_when(typ1 == "a" | typ2 == "a" ~ "a",
+                         typ1 == "b" | typ2 == "b" ~ "b",
+                         sub1 %in% c("h1", "h3") |
+                           sub2 %in% c("h1", "h1pre", "h3", "an", "h3v", "ao") ~ "a",
+                         sub1 %in% c("b") |
+                           sub2 %in% c("b") ~ "b",
+                         TRUE ~ typ1),
+         sub = case_when(typ == "b" & sub == "other" ~ "b", 
+                         typ == "a" & sub == "other" ~ "an", 
+                         typ %in% c("new", "av") & sub == "other" ~ typ,
+                         TRUE ~ sub),
+         flu = ifelse(PCR_ETIOL %in% 1:4 | 
+                        RES_FLUA == 1 | 
+                        RES_FLUB == 1 |
+                        sub1 != "other" | 
+                        sub2 != "other" | 
+                        typ %in% c("a", "b"), 
+                      1, 0),
+         date_bth = dmy(DT_NASC),
+         date_flu = dmy(DT_SIN_PRI),
+         date_not = dmy(DT_NOTIFIC),
+         date_vac = dmy(DT_UT_DOSE),
+         outcome = case_when(EVOLUCAO == 1 ~ "survived",
+                             EVOLUCAO == 2 ~ "death_flu",
+                             EVOLUCAO == 3 ~ "death_oth",
+                             EVOLUCAO == 4 ~ "death_inv",
+                             EVOLUCAO == 5 ~ "missing",
+                             TRUE ~ "oth"),
+         date_dth = dmy(DT_OBITO),
+         sex = CS_SEXO %>% str_to_lower(),
+         age = case_when(NU_IDADE_N < 4000 ~ 0,
+                         NU_IDADE_N > 4000 ~ NU_IDADE_N - 4000),
+         year = year(date_flu),
+         vaccine = case_when(VACINA == 1 ~ "y",
+                             VACINA == 2 ~ "n",
+                             VACINA == 9 ~ "unk",
+                             TRUE ~ "unk")) %>% 
+  filter(flu == 1) %>% 
+  select(year, sex, age, date_bth, date_flu, typ1, typ2, typ, sub1, sub2, sub, 
+         outcome, date_dth, date_not, vaccine, date_vac) %>% 
+  select(-sub1, -sub2, -typ1, -typ2)
+
+flu1218 %>% 
+  group_by(year, sub) %>% 
+  summarise(n = n()) %>% 
+  spread(sub, n)
+
+flu1218 %>% 
+  group_by(year, typ) %>% 
+  summarise(n = n()) %>% 
+  spread(typ, n)
+
+flu1218 %>% 
+  group_by(year, typ, sub) %>% 
+  summarise(n = n()) 
+
+flu1218 %>% 
+  group_by(year, age) %>% 
+  summarise(n = n()) 
+
+
+# ~~~~~~~~~~~~~~
+# data 2019 ====
+# ~~~~~~~~~~~~~~
+
+in192 <- 
+  in19 %>% 
+  select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, DT_SIN_PRI, 
+         DT_NASC, CS_SEXO, NU_IDADE_N,
+         HOSPITAL, 
+         POS_PCRFLU,POS_IF_FLU, TP_FLU_IF,
+         TP_FLU_PCR, PCR_FLUASU, FLUASU_OUT, PCR_FLUBLI, FLUBLI_OUT,
+         VACINA, DT_UT_DOSE,
+         EVOLUCAO, DT_EVOLUCA,
+         IF_PARA1,IF_PARA2 )
+
+
+# MN: checking NAs
+
+in192 %>% 
+  mutate(date_flu = dmy(DT_SIN_PRI),
+         year = year(date_flu)) %>% 
+  group_by(year,TP_FLU_PCR) %>% 
+  summarise(n = n()) %>% 
+  mutate(rel.freq =  scales::percent(n/sum(n), accuracy = 0.1)) 
+
+# MN: Maybe I did something wrong, but in 2012 98.7% of the variable RES_FLUASU is NA
+
+in192_NA <-in192 %>% 
+  mutate(date_bth = dmy(DT_NASC),
+         year_bth = year(date_bth)) %>% 
+  group_by(year_bth,TP_FLU_PCR) %>% 
+  summarise(n = n()) %>% 
+  mutate(rel.freq = n/sum(n)) 
+
+in192_NA %>% 
+  filter(year_bth>=1930, 
+         is.na(TP_FLU_PCR)) %>% 
+  ggplot(aes(year_bth,rel.freq)) +
+  geom_line()+
+  geom_vline(xintercept = c(1947, 1957, 1968, 1978, 2009), linetype="dashed", color = "blue")+
+  annotate("text", 
+           y = 0.99, 
+           x = c(1947, 1957, 1968, 1978, 2009), 
+           label = c("1947 (H1 drift)", "1957 (H2)", "1968 (H3)", "1978 (H1)", "2009 (H1)"),
+           angle = 90, hjust = 1, vjust = 0, size = 3)+
+  labs(x = "Cohort", title = "Proportion of NAs in the varible to identify the type of Influenza, dataset 2018-2019")+
+  ylim(0.65,1) +
+  theme_bw()
+
+ggsave (paste0("figures/","NAs_2018-2019.pdf"), 
+        plot = last_plot() , width = 8, height = 5, units = "in")
+
+flu19 <- 
+  in192 %>% 
+  mutate(typ = case_when(TP_FLU_PCR == 1 ~ "a",
+                         TP_FLU_PCR == 2 ~ "b",
+                         TP_FLU_IF == 1 ~ "a",
+                         TP_FLU_IF == 2 ~ "b",
+                         TRUE ~ "other"),
+         sub = case_when(PCR_FLUASU == 1 ~ "h1",
+                         PCR_FLUASU == 2 ~ "h3",
+                         PCR_FLUASU %in% 3:6 ~ "an",
+                         FLUASU_OUT == 1 ~ "ao",
+                         TP_FLU_PCR == 2 ~ "b",
+                         TRUE ~ "other"),
+         date_bth = dmy(DT_NASC),
+         date_flu = dmy(DT_SIN_PRI),
+         date_not = dmy(DT_NOTIFIC),
+         date_vac = dmy(DT_UT_DOSE),
+         flu = ifelse(POS_PCRFLU == 1 | 
+                             typ != "other" | 
+                             sub != "other", 
+                           1, 0),
+         outcome = case_when(EVOLUCAO == 1 ~ "survived",
+                             EVOLUCAO == 2 ~ "death_flu",
+                             EVOLUCAO == 3 ~ "death_oth",
+                             EVOLUCAO == 4 ~ "death_inv",
+                             EVOLUCAO == 5 ~ "missing",
+                             TRUE ~ "oth"),
+         date_dth = dmy(DT_EVOLUCA),
+         sex = CS_SEXO %>% str_to_lower(),
+         age = NU_IDADE_N,
+         year = year(date_flu),
+         vaccine = case_when(VACINA == 1 ~ "y",
+                             VACINA == 2 ~ "n",
+                             VACINA == 9 ~ "unk",
+                             TRUE ~ "unk")) %>% 
+  filter(flu == 1) %>% 
+  select(year, sex, age, date_bth, date_flu, date_not, typ, sub, outcome, date_dth, vaccine, date_vac)
+
+flu19 %>% 
+  group_by(year, typ) %>% 
+  summarise(n = n())
+
+flu19 %>% 
+  group_by(year, sub) %>% 
+  summarise(n = n())
+
+flu19 %>% 
+  group_by(outcome) %>% 
+  summarise(n = n())
+
+flu19 %>% 
+  group_by(vaccine) %>% 
+  summarise(n = n())
+
+flu19 %>% 
+  group_by(age) %>% 
+  summarise(n = n())
+
+year typ       n
+<dbl> <chr> <int>
+  1  2018 a         3
+2  2018 b         1
+3  2019 a      5939
+4  2019 b       905
+5  2019 other     2
+
+year sub       n
+<dbl> <chr> <int>
+  1  2018 an        1
+2  2018 b         1
+3  2018 h1        2
+4  2019 an      539
+5  2019 b       795
+6  2019 h1     3935
+7  2019 h3     1009
+8  2019 other   568
+# ~~~~~~~~~~~~~~~~~~~~~~
+# All data together ====
+# ~~~~~~~~~~~~~~~~~~~~~~
+flu <- 
+  bind_rows(flu0911, flu1218, flu19)
+
+test <- 
+  flu %>% 
+  group_by(year, age) %>% 
+  summarise(n = n())
+
+
+write_rds(flu, "data_inter/flu_data_brazil_2009_2019.rds")
