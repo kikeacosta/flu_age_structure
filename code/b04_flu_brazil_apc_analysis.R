@@ -353,6 +353,9 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  apc_h1_incid$plot
+  
+  
   # mortality
   apc_h1_death <- 
     apc_acp(sx = "t", sb = "h1", 
@@ -362,6 +365,8 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  apc_h1_death$plot
+  
   # cfr
   apc_h1_cfr <- 
     apc_acp(sx = "t", sb = "h1", 
@@ -370,6 +375,8 @@ apc_acp <-
             amn = 5, 
             amx = 85, 
             parm = "APC", dr.extr = extr)
+  
+  apc_h1_cfr$plot
   
   # incidence
   apc_h3_incid <- 

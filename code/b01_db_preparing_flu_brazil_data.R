@@ -30,6 +30,11 @@ unique(in18$NU_IDADE_N) %>% sort()
 unique(in19$NU_IDADE_N) %>% sort()
 
 
+test <- 
+  in12 %>% 
+  select(1, PCR_ETIOL, RES_FLUA, RES_FLUASU)
+
+
 # ~~~~~~~~~~~~~~~~~~~
 # data 2009-2011 ====
 # ~~~~~~~~~~~~~~~~~~~
@@ -320,3 +325,43 @@ vac_date <-
   spread(test, n)
 
 # table(vac_date$is_vac_date)
+
+
+
+# 
+# 
+# # 09-11
+# select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, DT_SIN_PRI, 
+#        DT_NASC, CS_SEXO, NU_IDADE_N,
+#        HOSPITAL, 
+#        PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
+#        PCR_TIPO_H, PCR_TIPO_N,
+#        VACINA, 
+#        EVOLUCAO, DT_OBITO)
+# 
+# # 12
+# select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, NU_ANO, DT_SIN_PRI, 
+#        DT_NASC, CS_SEXO, NU_IDADE_N,
+#        HOSPITAL, 
+#        PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
+#        PCR_TIPO_H, PCR_TIPO_N,
+#        VACINA, DT_UT_DOSE,
+#        EVOLUCAO, DT_OBITO)
+# 
+# # 13-18
+# select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, NU_ANO, DT_SIN_PRI, 
+#        DT_NASC, CS_SEXO, NU_IDADE_N,
+#        HOSPITAL, 
+#        PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
+#        PCR_TIPO_H, PCR_TIPO_N,
+#        VACINA, DT_UT_DOSE,
+#        EVOLUCAO, DT_OBITO)
+# 
+# # 19
+# select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, DT_SIN_PRI, 
+#        DT_NASC, CS_SEXO, NU_IDADE_N,
+#        HOSPITAL, 
+#        POS_PCRFLU,POS_IF_FLU, TP_FLU_IF,
+#        TP_FLU_PCR, PCR_FLUASU, FLUASU_OUT, PCR_FLUBLI, FLUBLI_OUT,
+#        VACINA, DT_UT_DOSE,
+#        EVOLUCAO, DT_EVOLUCA)
