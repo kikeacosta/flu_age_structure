@@ -30,6 +30,9 @@ unique(in18$NU_IDADE_N) %>% sort()
 unique(in19$NU_IDADE_N) %>% sort()
 
 
+unique(in09$PCR_ETIOL) %>% sort
+
+
 test <- 
   in12 %>% 
   select(1, PCR_ETIOL, RES_FLUA, RES_FLUASU)
@@ -67,7 +70,8 @@ flu0911 <-
                          PCR_ETIOL == 2 ~ "a",
                          PCR_ETIOL == 3 ~ "b",
                          PCR_ETIOL == 4 ~ "av",
-                         TRUE ~ "other"),
+                         PCR_ETIOL == 5 ~ "other",
+                         TRUE ~ NA_character_),
          sub = case_when(PCR_TIPO_H == 1 ~ "h1",
                          PCR_TIPO_H == 3 ~ "h3",
                          PCR_ETIOL == 3 ~ "b",

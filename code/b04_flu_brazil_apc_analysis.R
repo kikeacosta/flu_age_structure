@@ -353,6 +353,14 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  test <- 
+    apc_h1_incid$estimates %>% 
+    filter(dimension == "Age")
+  
+  test %>% 
+    ggplot()+
+    geom_line(aes(Years, value))
+  
   apc_h1_incid$plot
   
   
@@ -375,6 +383,17 @@ apc_acp <-
             amn = 5, 
             amx = 85, 
             parm = "APC", dr.extr = extr)
+  
+  
+  test <- 
+    apc_h1_cfr$estimates %>% 
+    filter(dimension == "Age")
+  
+  test %>% 
+    ggplot()+
+    geom_line(aes(Years, value))+
+    scale_x_continuous(breaks = seq(0, 100, 10))
+  
   
   apc_h1_cfr$plot
   
@@ -404,6 +423,9 @@ apc_acp <-
             amn = 5, 
             amx = 85, 
             parm = "APC", dr.extr = extr)
+
+  
+  
 } 
   
 # ratios H1/H3 for cohort effects
