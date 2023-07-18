@@ -337,7 +337,7 @@ apc_acp <-
       theme_bw()
       
       
-    return(list(apc_out, plot_cohort))
+    return(list(estimates = apc_out, plot = plot_cohort))
   }
 
 
@@ -353,6 +353,17 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  test <- 
+    apc_h1_incid$estimates %>% 
+    filter(dimension == "Age")
+  
+  test %>% 
+    ggplot()+
+    geom_line(aes(Years, value))
+  
+  apc_h1_incid$plot
+  
+  
   # mortality
   apc_h1_death <- 
     apc_acp(sx = "t", sb = "h1", 
@@ -362,6 +373,8 @@ apc_acp <-
             amx = 85, 
             parm = "APC", dr.extr = extr)
   
+  apc_h1_death$plot
+  
   # cfr
   apc_h1_cfr <- 
     apc_acp(sx = "t", sb = "h1", 
@@ -370,6 +383,19 @@ apc_acp <-
             amn = 5, 
             amx = 85, 
             parm = "APC", dr.extr = extr)
+  
+  
+  test <- 
+    apc_h1_cfr$estimates %>% 
+    filter(dimension == "Age")
+  
+  test %>% 
+    ggplot()+
+    geom_line(aes(Years, value))+
+    scale_x_continuous(breaks = seq(0, 100, 10))
+  
+  
+  apc_h1_cfr$plot
   
   # incidence
   apc_h3_incid <- 
@@ -397,6 +423,9 @@ apc_acp <-
             amn = 5, 
             amx = 85, 
             parm = "APC", dr.extr = extr)
+
+  
+  
 } 
   
 # ratios H1/H3 for cohort effects
@@ -435,7 +464,16 @@ apc_incid %>%
     theme_bw()
 
 
-
+  apc_h1_cfr$estimates %>% 
+    filter(dimension == "Age") %>% 
+    ggplot()+
+    geom_line(aes(Years, value))+
+    geom_hline(yintercept = 1, linetype = "dashed")+
+    scale_x_continuous(breaks = seq(0, 100, 10))+
+    scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1, 2, 5))+
+    labs(x = "Age", title = "H1N1 CFR")+
+    theme_bw()
+  
 
 detach(package:MASS)
 detach(package:Epi)

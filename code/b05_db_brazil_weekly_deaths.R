@@ -77,13 +77,18 @@ dts2 <-
 unique(dts2$cause)
 
 dts2 %>% 
-  filter(age == 80,
+  filter(age == 52,
          sex == "t",
          cause == "pi",
          year %in% 2004:2016) %>% 
   ggplot()+
   geom_line(aes(date, dts))+
   theme_bw()
+
+total_dts <- 
+  dts2 %>% 
+  group_by(year, cause, sex) %>% 
+  summarise(dts = sum(dts))
 
 dts3 <- 
   dts2 %>% 
