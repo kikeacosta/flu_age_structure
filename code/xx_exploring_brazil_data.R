@@ -16,7 +16,6 @@ br_pop <-
   mutate(cx = n/sum(n),
          status = "all brazil wpp")
 
-
 # data on flu survellance
 # Banco de Dados de Síndrome Respiratória Aguda Grave
 # Notificações de Síndrome Gripal
@@ -35,12 +34,164 @@ in18 <- read_delim("data_input/brazil/INFLUD18.csv", delim = ";")
 in19 <- read_delim("data_input/brazil/INFLUD19.csv", delim = ";")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-unique(in09$NU_IDADE_N) %>% sort()
-unique(in11$NU_IDADE_N) %>% sort()
-unique(in18$NU_IDADE_N) %>% sort()
+unique(in09$DS_OUTSUB) %>% sort()
+unique(in11$DS_OUTSUB) %>% sort()
+unique(in18$DS_OUTSUB) %>% sort()
 unique(in19$NU_IDADE_N) %>% sort()
 
-table(in09$CULT_RES)
+in09_11 <- 
+  bind_rows(in09, in10, in11,
+            in12, in13, in14,
+            in15, in16, in17,
+            in18, in19) %>% 
+  lapply(\(x) mutate(x, across(rt, as.double))) %>%
+  bind_rows()
+
+cut_dt1 <- function(dt){
+  dt2 <- 
+    dt %>% 
+    mutate(id = 1:n()) %>% 
+    select(
+      id,
+      DT_NOTIFIC,
+      PCR_RES,
+      PCR_ETIOL, PCR_TIPO_H, PCR_TIPO_N,
+      CULT_RES,
+      HEMA_RES, HEMA_ETIOL, HEM_TIPO_H, HEM_TIPO_N,
+      CLASSI_FIN,
+      RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB
+    )
+}
+cut_dt2 <- function(dt){
+  dt2 <- 
+    dt %>% 
+    mutate(id = 1:n()) %>% 
+    select(
+      id,
+      DT_NOTIFIC,
+      POS_IF_FLU, TP_FLU_IF,
+      PCR_RESUL, POS_PCRFLU, 
+      TP_FLU_PCR, PCR_FLUASU, FLUASU_OUT,
+      PCR_FLUBLI, FLUBLI_OUT 
+    )
+}
+
+t <-
+  bind_rows(
+    cut_dt1(in09),
+    cut_dt1(in10),
+    cut_dt1(in11),
+    cut_dt1(in12),
+    cut_dt1(in13),
+    cut_dt1(in14),
+    cut_dt1(in15),
+    cut_dt1(in16),
+    cut_dt1(in17),
+    cut_dt1(in18)
+    ) %>% 
+  mutate(year = str_sub(DT_NOTIFIC, 7, 10)) %>% 
+  mutate(test1 = ifelse(PCR_ETIOL == 1 | 
+                          PCR_TIPO_H %in% 1:16 |
+                          PCR_TIPO_N %in% 1:9, 
+                        1, 0),
+         test2 = ifelse(HEMA_RES == 1 | 
+                          HEMA_ETIOL %in% 1:4 | 
+                          HEM_TIPO_H %in% 1:16 |
+                          HEM_TIPO_N %in% 1:9, 
+                        1, 0),
+         test3 = ifelse(CULT_RES == 1, 1, 0),
+         test4 = ifelse(RES_FLUA == 1 | 
+                          RES_FLUB == 1,
+                        1, 0),
+         test5 = ifelse(CLASSI_FIN == 1, 
+                        1, 0),
+         test = ifelse(test1 == "pos" | test2 == "pos",
+                          test3 == "pos" | test4 == "pos",
+                          test5 == "pos",
+                       1, 0),
+         sub1 = case_when(PCR_TIPO_H == 1 ~ "h1",
+                          PCR_TIPO_H == 3 ~ "h3",
+                          is.na(PCR_TIPO_H) ~ NA_character_,
+                          TRUE ~ "other"),
+         sub2 = case_when(PCR_TIPO_H == 1 ~ "h1",
+                          PCR_TIPO_H == 3 ~ "h3",
+                          is.na(PCR_TIPO_H) ~ NA_character_,
+                          TRUE ~ "other"),
+         sub2 = case_when(RES_FLUASU == 1 ~ "h1",
+                          RES_FLUASU == 2 ~ "h1pre",
+                          RES_FLUASU == 3 ~ "h3",
+                          RES_FLUASU == 4 ~ "an",
+                          RES_FLUASU == 5 ~ "h3v",
+                          RES_FLUASU == 6 ~ "ao",
+                          RES_FLUB == 1 ~ "b",
+                          TRUE ~ NA_character_),
+         sub = case_when((!is.na(sub1) & sub1 != "other") & (is.na(sub2) | sub2 == "other") ~ sub1,
+                         (is.na(sub1) & sub1 == "other") & (!is.na(sub2) | sub2 != "other") ~ sub2,
+                         (sub1 == "h1" | sub2 == "h1") & (sub2 != "h1pre") ~ "h1",
+                         sub2 == "h1pre" ~ "h1pre",
+                         (sub1 == "h3" | sub2 == "h3") & (sub2 != "h3v") ~ "h3",
+                         sub2 == "h3v" ~ "h3v",
+                         sub1 == "b" | sub2 == "b" ~ "b",
+                         is.na(sub1) & is.na(sub2) ~ NA_character_,
+                         TRUE ~ sub2),
+         typ1 = case_when(PCR_ETIOL == 1 ~ "a",
+                          PCR_ETIOL == 2 ~ "a",
+                          PCR_ETIOL == 3 ~ "b",
+                          PCR_ETIOL == 4 ~ "av",
+                          PCR_ETIOL == 5 ~ "other",
+                          TRUE ~ NA_character_),
+         typ2 = case_when(RES_FLUA == 1 ~ "a",
+                          RES_FLUB == 1 ~ "b",
+                          TRUE ~ "other"),
+         typ = case_when(typ1 == "a" | typ2 == "a" ~ "a",
+                         typ1 == "b" | typ2 == "b" ~ "b",
+                         sub1 %in% c("h1", "h3") |
+                           sub2 %in% c("h1", "h1pre", "h3", "an", "h3v", "ao") ~ "a",
+                         sub1 %in% c("b") |
+                           sub2 %in% c("b") ~ "b",
+                         TRUE ~ typ1)) %>% 
+  mutate(sub = case_when(typ == "b" & sub == "other" ~ "b", 
+                         typ == "a" & sub == "other" ~ "an", 
+                         typ %in% c("new", "av") & sub == "other" ~ typ,
+                         TRUE ~ sub),
+         flu = ifelse(PCR_RES == 1 | 
+                        PCR_ETIOL %in% 1:4 | 
+                        !is.na(PCR_TIPO_H) | 
+                        !is.na(PCR_TIPO_N) |
+                        RES_FLUA == 1 | 
+                        RES_FLUB == 1 | 
+                        typ %in% c("a", "b"), 
+                      1, 0)) 
+
+%>% 
+  select(-DT_NOTIFIC) %>% 
+  gather(-id, -year, key = measure, value = value)
+  
+
+unique(t$measure)
+  
+t19 <- cut_dt2(in19)
+
+
+in09_112 <- 
+  in09_11 %>% 
+  select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, DT_SIN_PRI, 
+         DT_NASC, CS_SEXO, NU_IDADE_N,
+         HOSPITAL, 
+         PCR_RES,
+         PCR_ETIOL, RES_FLUA, RES_FLUB, RES_FLUASU, DS_OUTSUB, 
+         PCR_TIPO_H, PCR_TIPO_N,
+         HEMA_RES, HEMA_ETIOL, HEM_TIPO_H, HEM_TIPO_N,
+         VACINA, 
+         EVOLUCAO, DT_OBITO)
+
+
+
+
+
+table(in09_112$HEMA_RES)
+table(in09_112$HEMA_ETIOL)
+table(in09_112$HEMA_ETIOL)
 table(in12$CULT_RES)
 
 test <- 
@@ -94,10 +245,10 @@ unique(in09_112$NU_IDADE_N) %>% sort()
 in09_113 <- 
   in09_112 %>% 
   mutate(pcr = case_when(PCR_RES == 1 ~ "pos",
-                          PCR_RES == 2 ~ "neg",
-                          PCR_RES == 3 ~ "inc",
-                          PCR_RES == 4 ~ "not",
-                          TRUE ~ NA_character_),
+                         PCR_RES == 2 ~ "neg",
+                         PCR_RES == 3 ~ "inc",
+                         PCR_RES == 4 ~ "not",
+                         TRUE ~ NA_character_),
          typ = case_when(PCR_ETIOL == 1 ~ "a",
                          PCR_ETIOL == 2 ~ "a",
                          PCR_ETIOL == 3 ~ "b",
@@ -109,12 +260,13 @@ in09_113 <-
                          PCR_ETIOL == 3 ~ "b",
                          TRUE ~ "other"),
          typ = case_when(!is.na(PCR_TIPO_H) | !is.na(PCR_TIPO_N) ~ "a",
-                          sub %in% c("b") ~ "b",
-                          TRUE ~ typ),
+                         sub %in% c("b") ~ "b",
+                         TRUE ~ typ),
          flu = ifelse(PCR_RES == 1 | 
-                           PCR_ETIOL %in% 1:4 | 
-                           !is.na(PCR_TIPO_H) | 
-                           !is.na(PCR_TIPO_N), 1, 0), 
+                        PCR_ETIOL %in% 1:4 | 
+                        !is.na(PCR_TIPO_H) | 
+                        !is.na(PCR_TIPO_N), 1, 0), 
+         clt = 
          date_bth = dmy(DT_NASC),
          date_flu = dmy(DT_SIN_PRI),
          date_not = dmy(DT_NOTIFIC),
@@ -241,15 +393,15 @@ in12_18 <-
 in12_182 <- 
   in12_18 %>% 
   mutate(test1 = case_when(PCR_RES == 1 ~ "pos",
-                         PCR_RES == 2 ~ "neg",
-                         PCR_RES == 3 ~ "inc",
-                         PCR_RES == 4 ~ "not",
-                         TRUE ~ NA_character_),
+                           PCR_RES == 2 ~ "neg",
+                           PCR_RES == 3 ~ "inc",
+                           PCR_RES == 4 ~ "not",
+                           TRUE ~ NA_character_),
          test2 = case_when(RES_FLUA == 1 | RES_FLUB == 1 ~ "pos",
-                          RES_FLUA == 2 & RES_FLUB == 2 ~ "neg",
-                          RES_FLUA == 3 & RES_FLUB == 3 ~ "inc",
-                          RES_FLUA == 4 & RES_FLUB == 4 ~ "not",
-                          TRUE ~ NA_character_),
+                           RES_FLUA == 2 & RES_FLUB == 2 ~ "neg",
+                           RES_FLUA == 3 & RES_FLUB == 3 ~ "inc",
+                           RES_FLUA == 4 & RES_FLUB == 4 ~ "not",
+                           TRUE ~ NA_character_),
          test = case_when(test1 == "pos" | test2 == "pos" ~ "pos",
                           test1 == "neg" & test2 == "neg" ~ "neg",
                           test1 == "inc" & test2 == "inc" ~ "inc",
@@ -453,9 +605,9 @@ in193 <-
          date_not = dmy(DT_NOTIFIC),
          date_vac = dmy(DT_UT_DOSE),
          flu = ifelse(POS_PCRFLU == 1 | 
-                             typ != "other" | 
-                             sub != "other", 
-                           1, 0),
+                        typ != "other" | 
+                        sub != "other", 
+                      1, 0),
          outcome = case_when(EVOLUCAO == 1 ~ "survived",
                              EVOLUCAO == 2 ~ "death_flu",
                              EVOLUCAO == 3 ~ "death_oth",
