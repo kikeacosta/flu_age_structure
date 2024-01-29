@@ -10,7 +10,6 @@ library(ISOweek)
 # data 2021
 # https://dados.gov.br/dataset/sistema-de-informacao-sobre-mortalidade
 
-
 links <- paste0("data_input/brazil/Mortalidade_Geral_", 2000:2020, ".csv")
 i <- links[1]
 out <- list()
@@ -30,6 +29,7 @@ for (i in links){
            CAUSABAS) %>% 
     mutate(date_e = dmy(date_e),
            year = year(date_e),
+           month = month(date_e),
            sex = recode(SEXO,
                         "0" = "UNK",
                         "1" = "m",
@@ -44,7 +44,7 @@ for (i in links){
            cause = ifelse(cause_let == "J" & cause_num %in% 10:18, "pi", "oth"),
            week = date2ISOweek(date_e),
            week = str_sub(week, 1, 8)) %>% 
-    group_by(year, week, cause, sex, age) %>% 
+    group_by(year, month, cause, sex, age) %>% 
     summarize(dts = n(), .groups = "drop") %>% 
     spread(sex, dts) %>% 
     replace_na(list(UNK = 0,
@@ -62,9 +62,10 @@ dts <-
   bind_rows() %>% 
   ungroup() 
 
-write_rds(dts, "data_inter/brazil_weekly_cause_death.rds")
+write_rds(dts, "data_inter/brazil_weekly_cause_death.rds", compress = "xz")
 dts <- read_rds("data_inter/brazil_weekly_cause_death.rds")
 
+unique(dts$cause)
 
 dts2 <- 
   dts %>% 
@@ -76,7 +77,17 @@ dts2 <-
   
 unique(dts2$cause)
 
-dts2 %>% 
+
+dts3 <- 
+  dts2 %>% 
+  bind_rows(
+    dts2 %>% 
+      summarise(dts = sum(dts), .by = c(date, year, sex, age)) %>% 
+      mutate(cause = "total")
+  )
+
+
+dts3 %>% 
   filter(age == 52,
          sex == "t",
          cause == "pi",
@@ -85,10 +96,15 @@ dts2 %>%
   geom_line(aes(date, dts))+
   theme_bw()
 
-total_dts <- 
-  dts2 %>% 
-  group_by(year, cause, sex) %>% 
-  summarise(dts = sum(dts))
+dts3 %>% 
+  filter(age == 52,
+         sex == "t",
+         cause == "total",
+         year %in% 2004:2016) %>% 
+  ggplot()+
+  geom_line(aes(date, dts))+
+  theme_bw()
+
 
 dts3 <- 
   dts2 %>% 
@@ -102,7 +118,7 @@ mod <-
   gam()
 
 
-
+# 
 
 
 tot_age <- 
