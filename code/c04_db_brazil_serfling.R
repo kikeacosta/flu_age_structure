@@ -5,6 +5,8 @@ options(scipen=999)
 
 dt <- read_rds("data_inter/brazil_monthly_master.rds")
 
+unique(dt$cause)
+
 dt2 <- 
   dt %>% 
   filter(year < 2020) %>% 
@@ -19,20 +21,32 @@ dt2 <-
          sn10 = sin((10*pi*t)/12),
          cs10 = cos((10*pi*t)/12),
          .by = c(cause, sex, age)) %>% 
-  rename(exposure = pop)
+  rename(exposure = pop/12)
 
+# identifying epidemic periods 
+# (those in which deaths were above the upper confidence interval)
 dt3 <- 
   dt2 %>% 
+  group_by(cause, sex, age) %>% 
+  do(est_mth_epis(chunk = .data)) %>% 
+  ungroup()
+
+# fitting again but excluding epidemic periods
+dt4 <- 
+  dt3 %>% 
+  # adjusting weights based on epidemic periods
+  mutate(w = ifelse(dts > bsn_uc, 0, 1)) %>% 
   group_by(cause, sex, age) %>% 
   do(est_mth_baseline_pi(chunk = .data)) %>% 
   ungroup()
 
-write_rds(dt3, "data_inter/brazil_monthly_baselines.rds",
+# saving estimates
+write_rds(dt4, "data_inter/brazil_monthly_baselines.rds",
           compress = "xz")
 
-# monthly baselines 
+# monthly baselines
 # ~~~~~~~~~~~~~~~~~
-est_mth_baseline_pi <- function(chunk){
+est_mth_epis <- function(chunk){
   
   model <- 
     gam(dts ~ 
@@ -51,6 +65,48 @@ est_mth_baseline_pi <- function(chunk){
       res <- 
         predict(model, 
                 newdata = chunk,
+                type = "response", 
+                se.fit = TRUE)
+    )
+  
+  try(
+    chunk2 <- 
+      chunk %>% 
+      mutate(bsn = res$fit,
+             bsn_lc = bsn - 1.96 * res$se.fit,
+             bsn_uc = bsn + 1.96 * res$se.fit)
+  )
+  
+  if(class(test) == "try-error"){
+    chunk2 <- 
+      chunk %>% 
+      mutate(bsn = NA,
+             bsn_lc = NA,
+             bsn_uc = NA)
+  }
+  
+  return(chunk2)
+}
+
+est_mth_baseline_pi <- function(chunk){
+  
+  model <- 
+    gam(dts ~ 
+          s(t, bs = 'ps', m = c(2,2)) + 
+          sn2 + cs2 +
+          sn4 + cs4 +
+          sn8 + cs8 +
+          sn10 + cs10 +
+          offset(log(exposure)), 
+        weights = w,
+        data = chunk, 
+        family = quasipoisson(link = "log"))
+  
+  test <- 
+    try(
+      res <- 
+        predict(model, 
+                newdata = chunk %>% mutate(w = 1),
                 type = "response", 
                 se.fit = TRUE)
     )

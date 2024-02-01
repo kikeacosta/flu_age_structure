@@ -5,8 +5,17 @@ options(scipen=999)
 dts <- read_rds("data_inter/brazil_monthly_cause_death.rds")
 pop <- read_rds("data_inter/brazil_monthly_pop.rds")
 
-dt <- 
+# adding cardio_resp
+dts2 <- 
   dts %>% 
+  filter(cause %in% c("cvd", "res", "pi")) %>% 
+  reframe(dts = sum(dts),
+          .by = date, year, month, sex, age) %>% 
+  mutate(cause = "cvd_res") %>% 
+  bind_rows(dts)
+
+dt <- 
+  dts2 %>% 
   left_join(pop) %>% 
   mutate(mx = dts*1e5/pop)
 
