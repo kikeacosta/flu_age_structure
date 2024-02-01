@@ -1,9 +1,4 @@
-rm(list=ls())
-library(tidyverse)
-library(lubridate)
-library(ungroup)
-library(readxl)
-options(scipen=999)
+source("code/00_functions.R")
 
 # Brazil
 # ~~~~~~
@@ -45,12 +40,16 @@ unique(in11$NU_IDADE_N) %>% sort()
 unique(in18$NU_IDADE_N) %>% sort()
 unique(in19$NU_IDADE_N) %>% sort()
 
-unique(in09$PCR_ETIOL) %>% sort
+table(in09$CULT_RES)
+table(in12$CULT_RES)
 
 test <- 
   in09 %>% 
   select(1, PCR_RES, PCR_ETIOL, PCR_TIPO_H, PCR_TIPO_N, RES_FLUA, RES_FLUASU,
-         DS_OUTSUB)
+         DS_OUTSUB, HEMA_ETIOL, HEM_TIPO_H, HEM_TIPO_N)
+
+table(test$HEMA_ETIOL)
+table(test$PCR_ETIOL)
 
 test2 <- 
   test %>% 

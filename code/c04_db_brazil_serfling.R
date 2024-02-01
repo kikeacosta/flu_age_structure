@@ -1,0 +1,259 @@
+rm(list=ls())
+library(tidyverse)
+library(mgcv)
+options(scipen=999)
+
+dt <- read_rds("data_inter/brazil_monthly_master.rds")
+
+dt2 <- 
+  dt %>% 
+  filter(year < 2020) %>% 
+  mutate(t = 1:n(), 
+         w = ifelse(month %in% 4:9, 0, 1),
+         sn2 = sin((2*pi*t)/12),
+         cs2 = cos((2*pi*t)/12),
+         sn4 = sin((4*pi*t)/12),
+         cs4 = cos((4*pi*t)/12),
+         sn8 = sin((8*pi*t)/12),
+         cs8 = cos((8*pi*t)/12),
+         sn10 = sin((10*pi*t)/12),
+         cs10 = cos((10*pi*t)/12),
+         .by = c(cause, sex, age)) %>% 
+  rename(exposure = pop)
+
+dt3 <- 
+  dt2 %>% 
+  group_by(cause, sex, age) %>% 
+  do(est_mth_baseline_pi(chunk = .data)) %>% 
+  ungroup()
+
+write_rds(dt3, "data_inter/brazil_monthly_baselines.rds",
+          compress = "xz")
+
+# monthly baselines 
+# ~~~~~~~~~~~~~~~~~
+est_mth_baseline_pi <- function(chunk){
+  
+  model <- 
+    gam(dts ~ 
+          s(t, bs = 'ps', m = c(2,2)) + 
+          sn2 + cs2 +
+          sn4 + cs4 +
+          sn8 + cs8 +
+          sn10 + cs10 +
+          offset(log(exposure)), 
+        weights = w,
+        data = chunk, 
+        family = quasipoisson(link = "log"))
+  
+  test <- 
+    try(
+      res <- 
+        predict(model, 
+                newdata = chunk,
+                type = "response", 
+                se.fit = TRUE)
+    )
+  
+  try(
+    chunk2 <- 
+      chunk %>% 
+      mutate(bsn = res$fit,
+             bsn_lc = bsn - 1.96 * res$se.fit,
+             bsn_uc = bsn + 1.96 * res$se.fit) %>% 
+      left_join(simul_mth_intvals(model, 
+                                  model_type = "gam", 
+                                  db = chunk, 
+                                  nsim = 1000,
+                                  p = 0.95),
+                by = "t")
+  )
+  
+  if(class(test) == "try-error"){
+    chunk2 <- 
+      chunk %>% 
+      mutate(bsn = NA,
+             bsn_lp = NA,
+             bsn_up = NA,
+             bsn_lc = NA,
+             bsn_uc = NA)
+  }
+  
+  return(chunk2)
+}
+
+simul_mth_intvals <- 
+  function(
+    # fitted model 
+    model, 
+    # either GLM or GAM (needed for model matrix extraction step)
+    model_type, 
+    # prediction data
+    db, 
+    # number of iterations
+    nsim, 
+    # prediction intervals' uncertainty level (between 0 and 1)
+    p
+  ){
+    
+    # defining upper and lower prediction quantiles
+    lp <- (1 - p) / 2
+    up <- 1 - lp
+    
+    # matrix model extraction
+    if(model_type == "glm"){
+      X_prd <- model.matrix(model, data = db, na.action = na.pass)
+    }
+    if(model_type == "gam"){
+      X_prd <- predict(model, newdata = db, type = 'lpmatrix')
+    }
+    
+    # estimated coefficients
+    beta <- coef(model)
+    
+    # offsets extracted directly from the prediction data
+    offset_prd <- matrix(log(db$exposure))
+    # model.offset(x)
+    
+    # extracting variance covariance matrix
+    beta_sim <- MASS::mvrnorm(nsim, 
+                              coef(model), 
+                              suppressWarnings(vcov(model)))
+    
+    # simulation process
+    Ey_sim <- apply(beta_sim, 1, FUN = function (b) exp(X_prd %*% b + offset_prd))
+    
+    y_sim <- apply(Ey_sim, 2, FUN = function (Ey) {
+      y <- mu <- Ey
+      # NA's can't be passed to the simulation functions, so keep them out
+      idx_na <- is.na(mu) 
+      mu_ <- mu[!idx_na] 
+      N <- length(mu_)
+      phi <- suppressWarnings(summary(model)$dispersion)
+      # in case of under-dispersion, sample from Poisson
+      if (phi < 1) { phi = 1 }
+      y[!idx_na] <- rnbinom(n = N, mu = mu_, size = mu_/(phi-1))      
+      return(y)
+    })
+    
+    # from wide to tidy format
+    ints_simul <- 
+      db %>% 
+      select(t)
+    
+    colnames_y_sim <- paste0('deaths_sim', 1:nsim)
+    
+    ints_simul[,colnames_y_sim] <- y_sim
+    
+    # prediction intervals output
+    ints_simul <-
+      ints_simul %>%
+      pivot_longer(cols = starts_with('deaths_sim'),
+                   names_to = 'sim_id', values_to = 'deaths_sim') %>%
+      group_by(t) %>%
+      summarise(
+        bsn_lp = quantile(deaths_sim, lp, na.rm = TRUE),
+        bsn_up = quantile(deaths_sim, up, na.rm = TRUE), 
+        .groups = 'drop'
+      ) 
+    
+    return(ints_simul)
+  }
+
+
+
+
+# # GLM model (sin and cos terms still missing) ====
+# 
+# fit_sbs_neo <- function(chunk){
+#   
+#   model <- glm(value ~ t + offset(log(exposure)),
+#                data = chunk,
+#                weights = w,
+#                family = "quasipoisson")
+#   
+#   test <- try(pred <- predict(model, 
+#                               se.fit = TRUE,
+#                               type = "response"))
+#   
+#   try(out <- 
+#         chunk %>%
+#         mutate(bsn = pred$fit,
+#                lp = (pred$fit - 1.96 * pred$se.fit),
+#                up = (pred$fit + 1.96 * pred$se.fit)))
+#   
+#   if(class(test) == "try-error"){
+#     out <- 
+#       chunk %>% 
+#       mutate(bsn = NA,
+#              lp = NA,
+#              up = NA)
+#     
+#   }
+#   
+#   return(out)
+# }
+
+
+
+
+
+# chunk <-
+#   dt2 %>% 
+#   filter(age == 80,
+#          sex == "t",
+#          cause == "pi")
+# 
+# chunk %>% 
+#   ggplot()+
+#   geom_line(aes(date, mx))
+# 
+# # testing
+# md_spl <- 
+#   gam(dts ~ 
+#         s(t, bs = 'ps', m = c(2,2)) + 
+#         s(month, bs = 'cp') +
+#         offset(log(exposure)), 
+#       weights = w,
+#       data = chunk, 
+#       family = quasipoisson(link = "log"))
+# 
+# md_sin <- 
+#   gam(dts ~ 
+#         s(t, bs = 'ps', m = c(2,2)) + 
+#         sn2 +
+#         cs2 +
+#         sn4 +
+#         cs4 +
+#         sn8 +
+#         cs8 +
+#         sn10 +
+#         cs10 +
+#         offset(log(exposure)), 
+#       weights = w,
+#       data = chunk, 
+#       family = quasipoisson(link = "log"))
+# 
+# res_spl <- 
+#   predict(md_spl, 
+#           newdata = chunk,
+#           type = "response", 
+#           se.fit = TRUE)
+# 
+# res_sin <- 
+#   predict(md_sin, 
+#           newdata = chunk,
+#           type = "response", 
+#           se.fit = TRUE)
+# 
+# chunk2 <- 
+#   chunk %>% 
+#   mutate(bsn_spl = res_spl$fit,
+#          bsn_sin = res_sin$fit)
+# 
+# chunk2 %>% 
+#   ggplot()+
+#   geom_line(aes(date, dts))+
+#   geom_line(aes(date, bsn_spl), col = "red")+
+#   geom_line(aes(date, bsn_sin), col = "blue")+
+#   theme_bw()
