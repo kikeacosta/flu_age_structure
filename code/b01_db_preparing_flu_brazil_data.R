@@ -600,6 +600,23 @@ sub_curr <-
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 vac_date <- 
   flu %>% 
   filter(year %in% 2013:2019) %>% 
