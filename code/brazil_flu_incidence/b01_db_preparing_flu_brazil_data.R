@@ -2,19 +2,19 @@ source("code/00_functions.R")
 
 # Brazil
 # ~~~~~~
-
-# to look at the cohort composition of each flu status
-library(wpp2022)
-data(popAge1dt)
-br_pop <- 
-  popAge1dt %>% 
-  filter(name == "Brazil",
-         year %in% c(2010, 2016, 2019)) %>% 
-  mutate(cohort = year - age) %>% 
-  select(year, cohort, n = pop) %>% 
-  group_by(year) %>% 
-  mutate(cx = n/sum(n),
-         status = "all brazil wpp")
+# 
+# # to look at the cohort composition of each flu status
+# library(wpp2022)
+# data(popAge1dt)
+# br_pop <- 
+#   popAge1dt %>% 
+#   filter(name == "Brazil",
+#          year %in% c(2010, 2016, 2019)) %>% 
+#   mutate(cohort = year - age) %>% 
+#   select(year, cohort, n = pop) %>% 
+#   group_by(year) %>% 
+#   mutate(cx = n/sum(n),
+#          status = "all brazil wpp")
 
 
 # data on flu survellance
@@ -175,6 +175,9 @@ dt2 <-
     sex = CS_SEXO %>% str_to_lower(),
     age = case_when(NU_IDADE_N < 4000 ~ 0,
                     NU_IDADE_N > 4000 ~ NU_IDADE_N - 4000),
+    age2 = interval(ymd(date_bth), ymd(date1)) %>% as.numeric('years'),
+    age2 = round(age2),
+    age = ifelse(is.na(age), age2, age),
     cohort = ifelse(is.na(date_bth),
                     year - age, 
                     year(date_bth)),
@@ -220,13 +223,13 @@ in193 <-
                           PCR_RESUL == 4 ~ "not"),
          typ = case_when(TP_FLU_PCR == 1 ~ "a",
                          TP_FLU_PCR == 2 ~ "b",
-                         TRUE ~ NA_character_),
+                         TRUE ~ "z"),
          sub = case_when(PCR_FLUASU == 1 ~ "h1",
                          PCR_FLUASU == 2 ~ "h3",
                          PCR_FLUASU %in% 3:5 ~ "an",
                          PCR_FLUASU == 6 | FLUASU_OUT == 1 ~ "ao",
                          TP_FLU_PCR == 2 ~ "b",
-                         TRUE ~ NA_character_),
+                         TRUE ~ "z"),
          date_bth = dmy(DT_NASC),
          date_flu = dmy(DT_SIN_PRI),
          date_not = dmy(DT_NOTIFIC),
@@ -243,9 +246,12 @@ in193 <-
                              TRUE ~ "oth"),
          hosp = ifelse(HOSPITAL == 1, 1, 0),
          date_dth = dmy(DT_EVOLUCA),
+         year = year(date_flu),
          sex = CS_SEXO %>% str_to_lower(),
          age = NU_IDADE_N,
-         year = year(date_flu),
+         age2 = interval(ymd(date_bth), ymd(date_flu)) %>% as.numeric('years'),
+         age2 = round(age2),
+         age = ifelse(is.na(age), age2, age),
          cohort = ifelse(is.na(date_bth),
                          year - age, 
                          year(date_bth)),
@@ -265,7 +271,17 @@ flu19 <-
 # All data together ====
 # ~~~~~~~~~~~~~~~~~~~~~~
 flu <- 
-  bind_rows(flu0918, flu19)
+  bind_rows(flu0918, flu19) %>% 
+  # adjusting types and subtypes to identify better flu cases
+  mutate(sub = case_when(typ == "b" ~ "b",
+                         typ == "a" & sub %in% c("an", "ao", "z") ~ "hx",
+                         flu == 1 & sub == "z" ~ "ab",
+                         TRUE ~ sub),
+         typ = ifelse(flu == 1 & typ == "z", "ab", typ))
+
+table(flu$typ, flu$sub)
+table(flu$flu, flu$sub)
+table(flu$flu, flu$typ)
 
 test <- 
   flu %>% 
@@ -274,7 +290,6 @@ test <-
 
 test %>% 
   spread(year, n)
-
 
 write_rds(flu, "data_inter/flu_data_brazil_2009_2019_v3.rds",
           compress = "xz")

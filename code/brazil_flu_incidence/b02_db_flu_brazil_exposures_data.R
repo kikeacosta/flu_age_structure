@@ -1,16 +1,22 @@
 rm(list=ls())
+library(wpp2022)
 library(tidyverse)
 library(lubridate)
 library(ungroup)
 library(readxl)
-library(wpp2022)
 
 options(scipen=999)
 
 flu <- 
-  read_rds("data_inter/flu_data_brazil_2009_2019_v3.rds")
+  read_rds("data_inter/flu_data_brazil_2009_2019_v3.rds") %>% 
+  mutate(age = year - cohort)
 
 unique(flu$year)
+unique(flu$typ)
+unique(flu$sub)
+table(flu$sub)
+table(flu$year, flu$sub, flu$outcome)
+table(flu$year)
 
 # exposures
 data(popAge1dt)
@@ -95,9 +101,22 @@ pop2 <-
 
 # total flu circulation ====
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ili <- 
+  flu %>% 
+  summarise(css = n(), .by = c(year, sex, age, hosp, outcome))
+
+
+
+group_by(year, sex, age)
+
+
+
+
 flu0 <- 
   flu %>% 
-  summarise(value = n(), .by = c(cohort, sub))
+  summarise(value = n(), .by = c(cohort, sub, flu)) %>% 
+  spread(flu, value)
 
 # 
 flu0 %>% 
