@@ -8,11 +8,15 @@ options(scipen=999)
 flu <- 
   read_rds("data_inter/flu_data_brazil_exposures_2009_2019.rds")
 
+unique(flu$sex)
+
 flu %>% 
+  filter(sex == "t") %>% 
   group_by(sub, outcome) %>% 
   summarise(sum(value))
 
 flu %>% 
+  filter(sex == "t") %>% 
   group_by(year, sub) %>% 
   summarise(value = sum(value)) %>% 
   spread(sub, value)
