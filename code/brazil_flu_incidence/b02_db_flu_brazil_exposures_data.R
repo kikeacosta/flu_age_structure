@@ -3,49 +3,66 @@ library(tidyverse)
 library(lubridate)
 library(ungroup)
 library(readxl)
+library(wpp2022)
+
 options(scipen=999)
 
 flu <- 
-  read_rds("data_inter/flu_data_brazil_2009_2019.rds")
+  read_rds("data_inter/flu_data_brazil_2009_2019_v3.rds")
 
-unique(flu$date_flu)
+unique(flu$year)
 
-pop_f <- read_delim("data_input/brazil/pop_female.csv",
-                    skip = 4,
-                    delim = ";")
-
-pop_m <- read_delim("data_input/brazil/pop_male.csv",
-                    skip = 4,
-                    delim = ";")
+# exposures
+data(popAge1dt)
 
 pop <- 
-  bind_rows(pop_f %>% mutate(sex = "f"),
-            pop_m %>% mutate(sex = "m")) %>% 
-  rename(age = 1) %>% 
-  gather(-sex, -age, key = year, value = pop) %>% 
-  drop_na(pop) %>% 
-  mutate(year = year %>% as.integer()) %>% 
-  separate(age, c("age", "trash")) %>% 
-  filter(age != "Total") %>% 
-  mutate(age = age %>% as.integer()) %>% 
-  select(-trash)
+  popAge1dt %>% 
+  select(year, name, age, m = popM, f = popF, t = pop) %>% 
+  filter(name == "Brazil",
+         year %in% 2000:2022) %>% 
+  pivot_longer(c(m, f, t), 
+               names_to = "sex", values_to = "pop") %>% 
+  select(year, age, sex, pop) %>% 
+  mutate(pop = pop*1e3)
 
-pop2 <- 
-  pop %>% 
-  group_by(age, year) %>% 
-  summarise(pop = sum(pop)) %>% 
-  ungroup() %>% 
-  mutate(sex = "t") %>% 
-  bind_rows(pop) %>% 
-  select(year, sex, age, pop) %>% 
-  arrange(year, sex, age)
+unique(pop$sex)
 
+# pop_f <- read_delim("data_input/brazil/pop_female.csv",
+#                     skip = 4,
+#                     delim = ";")
+# 
+# pop_m <- read_delim("data_input/brazil/pop_male.csv",
+#                     skip = 4,
+#                     delim = ";")
+# 
+# pop <- 
+#   bind_rows(pop_f %>% mutate(sex = "f"),
+#             pop_m %>% mutate(sex = "m")) %>% 
+#   rename(age = 1) %>% 
+#   gather(-sex, -age, key = year, value = pop) %>% 
+#   drop_na(pop) %>% 
+#   mutate(year = year %>% as.integer()) %>% 
+#   separate(age, c("age", "trash")) %>% 
+#   filter(age != "Total") %>% 
+#   mutate(age = age %>% as.integer()) %>% 
+#   select(-trash)
+# 
+# pop2 <- 
+#   pop %>% 
+#   reframe(pop = sum(pop), .by = c(age, year)) %>% 
+#   mutate(sex = "t") %>% 
+#   bind_rows(pop) %>% 
+#   select(year, sex, age, pop) %>% 
+#   arrange(year, sex, age)
+# 
+# unique(pop2$year)
 
 # ungrouping exposures at ages 90-100
 chunk <- 
-  pop2 %>% 
+  pop %>% 
   filter(sex == "t",
          year == 2010)
+
 ungroup_open_age <- 
   function(chunk){
     
@@ -70,8 +87,8 @@ ungroup_open_age <-
       bind_rows(new_pop %>% filter(age >= 90))
   }
 
-pop3 <- 
-  pop2 %>% 
+pop2 <- 
+  pop %>% 
   group_by(year, sex) %>% 
   do(ungroup_open_age(chunk = .data)) %>% 
   ungroup() 
@@ -80,49 +97,43 @@ pop3 <-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 flu0 <- 
   flu %>% 
-  mutate(cohort = year(date_bth),
-         age = year - cohort) %>% 
-  group_by(date_flu, sub) %>% 
-  summarise(value = n()) %>% 
-  ungroup() 
+  summarise(value = n(), .by = c(cohort, sub))
 
 # 
 flu0 %>% 
   filter(sub %in% c("h1", "h3")) %>% 
   ggplot()+
-  geom_line(aes(date_flu, value, col = sub))+
+  geom_line(aes(cohort, value, col = sub))+
   theme_bw()
-
 
 # flu circulation by sex, age, and subtype ====
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 flu2 <- 
   flu %>% 
-  filter(sub %in% c("h1", "h3", "b")) %>% 
-  mutate(age2 = interval(ymd(date_bth), ymd(date_flu)) %>% as.numeric('years'),
-         age2 = round(age2),
-         age = ifelse(is.na(age), age2, age)) %>% 
-  select(-age2) %>% 
-  group_by(year, sex, age, sub, outcome) %>% 
-  summarise(value = n()) %>% 
-  ungroup() %>% 
+  # filter(sub %in% c("h1", "h3", "b")) %>% 
+  # mutate(age2 = interval(ymd(date_bth), ymd(date_flu)) %>% as.numeric('years'),
+  #        age2 = round(age2),
+  #        age = ifelse(is.na(age), age2, age)) %>% 
+  # select(-age2) %>% 
+  summarise(value = n(), .by = c(year, sex, age, sub, hosp, outcome)) %>% 
   drop_na(age)
 
 css <- 
   flu2 %>% 
-  group_by(year, sex, age, sub) %>% 
-  summarise(value = sum(value)) %>% 
-  ungroup() %>% 
+  summarise(value = sum(value), .by = c(year, sex, age, sub)) %>% 
   mutate(outcome = "cases")
+
+hsp <- 
+  flu2 %>% 
+  filter(hosp == 1) %>% 
+  summarise(value = sum(value), .by = c(year, sex, age, sub)) %>% 
+  mutate(outcome = "hosps")
 
 dts <- 
   flu2 %>% 
   filter(outcome == "death_flu") %>% 
-  group_by(year, sex, age, sub) %>% 
-  summarise(value = sum(value)) %>% 
-  ungroup() %>% 
+  summarise(value = sum(value), .by = c(year, sex, age, sub)) %>% 
   mutate(outcome = "deaths")
-
 
 flu3 <- 
   bind_rows(dts, css) %>% 
@@ -132,7 +143,7 @@ flu3 <-
   mutate(sex = "t") %>% 
   bind_rows(dts, css) %>% 
   mutate(cohort = year - age) %>% 
-  left_join(pop3) %>% 
+  left_join(pop2) %>% 
   drop_na(age) %>% 
   mutate(mx = 1e5 * value / pop)
 

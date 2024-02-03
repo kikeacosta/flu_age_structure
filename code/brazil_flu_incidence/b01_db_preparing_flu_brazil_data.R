@@ -276,7 +276,8 @@ test %>%
   spread(year, n)
 
 
-write_rds(flu, "data_inter/flu_data_brazil_2009_2019_v3.rds")
+write_rds(flu, "data_inter/flu_data_brazil_2009_2019_v3.rds",
+          compress = "xz")
 
 # comparison with previous versions
 flu_prev1 <- read_rds("data_inter/flu_data_brazil_2009_2019.rds")
@@ -295,7 +296,10 @@ flu %>%
   summarise(n = n()) %>%  
   ungroup()
 
-
+# write_rds(flu_prev1, "data_inter/flu_data_brazil_2009_2019.rds",
+#           compress = "xz")
+# write_rds(flu_prev2, "data_inter/flu_data_brazil_2009_2019_v2.rds",
+#           compress = "xz")
 
 
 
