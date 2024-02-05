@@ -10,6 +10,7 @@ dt <-
 
 unique(dt$year)
 unique(dt$typ)
+table(dt$outcome)
 unique(dt$sub)
 table(dt$sub)
 table(dt$year, dt$sub, dt$outcome)
@@ -20,6 +21,7 @@ table(dt$flu, dt$hosp)
 table(dt$outcome)
 table(dt$year)
 table(dt$age)
+table(dt$sub, dt$year)
 # table(dt2$sub, dt2$outcome)
 # keeping only subtype
 dt2 <- 
@@ -45,8 +47,8 @@ dt2 <-
   mutate(dth = ifelse(outcome %in% c("death_flu", "death_inv", "death_oth"), 
                       1, 0))
 
+# grouping data 
 # ili
-
 ili <- 
   dt2 %>% 
   summarise(css = sum(value),
@@ -55,6 +57,7 @@ ili <-
             .by = c(year, sex, age)) %>% 
   mutate(type = "ili")
 
+# sari
 sari <- 
   dt2 %>% 
   filter(hosp == 1) %>% 
@@ -64,6 +67,7 @@ sari <-
             .by = c(year, sex, age)) %>% 
   mutate(type = "sari")
 
+# flu cases
 flu <- 
   dt2 %>% 
   filter(flu == 1) %>% 
@@ -74,6 +78,7 @@ flu <-
             .by = c(year, sex, age)) %>% 
   mutate(type = "flu")
 
+# H1 cases
 h1 <- 
   dt2 %>% 
   filter(flu == 1,
@@ -85,6 +90,7 @@ h1 <-
             .by = c(year, sex, age)) %>% 
   mutate(type = "h1")
 
+# H3 cases
 h3 <- 
   dt2 %>% 
   filter(flu == 1,
@@ -96,16 +102,18 @@ h3 <-
             .by = c(year, sex, age)) %>% 
   mutate(type = "h3")
 
-
+# putting all together
 all <- 
   bind_rows(ili, sari, flu, h1, h3) %>% 
   complete(year, sex, age, fill = list(css = 0, hsp = 0, dts = 0)) %>% 
   arrange(type, year, sex, age) %>% 
-  # mutate(cfr = dts/css) %>% 
   left_join(pop) %>% 
-  filter(year %in% c(2009, 2013, 2016, 2018, 2019),
+  filter(year %in% c(2009, 2012, 2013, 2016, 2018, 2019),
          sex == "t")
 
+
+# smoothing rates along ages ====
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # incidence
 ix <- 
@@ -123,17 +131,6 @@ mx <-
   do(smooth_age(chunk = .data)) %>% 
   ungroup()
 
-# cfr
-cfr <- 
-  all %>% 
-  rename(value = dts, exposure = css) %>% 
-  left_join(ix %>% 
-              select(year, sex, age, type, exp_smt = val_smt)) %>% 
-  left_join(mx %>% 
-              select(year, sex, age, type, val_smt = val_smt)) %>% 
-  mutate(value_r = value/exposure,
-         val_smt_r = val_smt/exp_smt)
-  
 # hosp risk
 hsp <- 
   all %>% 
@@ -143,6 +140,28 @@ hsp <-
   group_by(year, sex, type) %>% 
   do(smooth_age(chunk = .data)) %>% 
   ungroup()
+
+# estimating CFR and smoothed CFR from smoothed rates
+# CFR
+cfr <- 
+  all %>% 
+  rename(value = dts, exposure = css) %>% 
+  left_join(ix %>% 
+              select(year, sex, age, type, exp_smt = val_smt)) %>% 
+  left_join(mx %>% 
+              select(year, sex, age, type, val_smt = val_smt)) %>% 
+  mutate(value_r = value/exposure,
+         val_smt_r = val_smt/exp_smt)
+
+
+all %>% 
+  filter(type == "h1",
+         year == 2009) %>% 
+  mutate(cfr = dts/css) %>% 
+  ggplot()+
+  geom_point(aes(age, cfr), col = "red")
+  
+
 
 
 # plots ====
@@ -155,6 +174,7 @@ ix %>%
   geom_point(aes(age, value, col = factor(year)))+
   geom_line(aes(age, val_smt, col = factor(year)))+
   theme_bw()+
+  scale_x_continuous(breaks = seq(0, 100, 10))+
   facet_wrap(~type, scales = "free_y")
 
 # over ages
@@ -180,9 +200,26 @@ ix %>%
          type == "h1",
          cohort >= 1910) %>%
   ggplot()+
+  geom_line(aes(cohort, val_smt, col = factor(year)))+
+  geom_point(aes(cohort, val_smt, col = factor(year)))+
+  scale_x_reverse()+
+  theme_bw()+
+  scale_y_log10()+
+  geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
+
+
+ix %>% 
+  mutate(cohort = year - age,
+         value_r = value / exposure,
+         val_smt_r = val_smt/exposure) %>% 
+  filter(sex == "t",
+         type == "h1",
+         cohort >= 1920) %>%
+  ggplot()+
   geom_line(aes(cohort, val_smt_r, col = factor(year)))+
   theme_bw()+
   scale_y_log10()+
+  scale_x_reverse()+
   geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
 
 
@@ -233,6 +270,23 @@ mx %>%
   theme_bw()+
   geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
 
+mx %>% 
+  mutate(cohort = year - age,
+         value_r = value / exposure,
+         val_smt_r = val_smt/exposure) %>% 
+  filter(sex == "t",
+         type == "h1",
+         cohort >= 1925,
+         year %in% c(2009, 2013, 2016)) %>%
+  ggplot()+
+  geom_line(aes(cohort, val_smt_r, col = factor(year)))+
+  geom_point(aes(cohort, value_r, col = factor(year)))+
+  scale_y_log10()+
+  scale_x_reverse(breaks = seq(1900, 2010, 10))+
+  # facet_wrap(~year, scales = "free_y")+
+  theme_bw()+
+  geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
+
 
 # case fatality rates ====
 # ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -240,10 +294,11 @@ mx %>%
 cfr %>% 
   mutate(cohort = year - age) %>% 
   filter(sex == "t",
-         type == "h1") %>%
+         type == "h1",
+         cohort >= 1910) %>%
   ggplot()+
-  geom_point(aes(age, value, col = factor(year)))+
-  geom_line(aes(age, val_smt, col = factor(year)))+
+  geom_point(aes(age, value_r, col = factor(year)))+
+  geom_line(aes(age, val_smt_r, col = factor(year)))+
   # facet_wrap(~year, scales = "free_y")+
   theme_bw()
 
@@ -251,10 +306,11 @@ cfr %>%
 cfr %>% 
   mutate(cohort = year - age) %>% 
   filter(sex == "t",
-         type == "h1") %>%
+         type == "h1",
+         cohort >= 1920) %>%
   ggplot()+
-  geom_point(aes(cohort, value, col = factor(year)))+
-  geom_line(aes(cohort, val_smt, col = factor(year)))+
+  geom_point(aes(cohort, value_r, col = factor(year)))+
+  geom_line(aes(cohort, val_smt_r, col = factor(year)))+
   # facet_wrap(~year, scales = "free_y")+
   theme_bw()+
   geom_vline(xintercept = c(1957, 1968, 1985, 2009), linetype = "dashed")
@@ -264,13 +320,15 @@ cfr %>%
   mutate(cohort = year - age) %>% 
   filter(sex == "t",
          type == "h1",
-         year %in% c(2009, 2013, 2016)) %>%
+         year %in% c(2009, 2012, 2013, 2016),
+         cohort >= 1920) %>%
   ggplot()+
-  geom_point(aes(cohort, value, col = factor(year)))+
-  geom_line(aes(cohort, val_smt, col = factor(year)))+
+  geom_point(aes(cohort, value_r, col = factor(year)))+
+  geom_line(aes(cohort, val_smt_r, col = factor(year)))+
   # facet_wrap(~year, scales = "free_y")+
+  scale_x_reverse()+
   theme_bw()+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")
+  geom_vline(xintercept = c(1957, 1968, 1984, 2009), linetype = "dashed")
 
 
 

@@ -15,8 +15,7 @@ source("code/00_functions.R")
 #   group_by(year) %>% 
 #   mutate(cx = n/sum(n),
 #          status = "all brazil wpp")
-
-
+# 
 # data on flu survellance
 # Banco de Dados de Síndrome Respiratória Aguda Grave
 # Notificações de Síndrome Gripal
@@ -92,6 +91,11 @@ dt <-
     cut_db1(in18)
   ) %>% 
   mutate(across(7:22, ~replace_na(.x, 0))) 
+
+table(dt$PCR_RES)
+table(dt$PCR_ETIOL)
+table(dt$HEMA_RES)
+table(dt$CULT_RES)
 
 dt2 <- 
   dt %>% 
@@ -306,10 +310,12 @@ flu_prev1 %>%
   group_by(sub) %>% 
   summarise(n = n()) %>%  
   ungroup()
+
 flu_prev2 %>% 
   group_by(sub) %>% 
   summarise(n = n()) %>%  
   ungroup()
+
 flu %>% 
   group_by(sub) %>% 
   summarise(n = n()) %>%  

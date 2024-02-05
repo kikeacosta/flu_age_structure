@@ -5,6 +5,17 @@ options(scipen=999)
 
 dt <- read_rds("data_inter/brazil_monthly_baselines.rds")
 
+dt %>% 
+  filter(age == 80,
+         cause == "pi",
+         sex == "t") %>% 
+  ggplot()+
+  geom_point(aes(date, dts))+
+  geom_line(aes(date, bsn))+
+  scale_x_date(breaks = "1 year", date_labels= "%Y")
+
+
+
 dts_age <- 
   dt %>% 
   mutate(
@@ -15,6 +26,7 @@ dts_age <-
       year == 2013 ~ "wav13",
       year == 2016 ~ "wav16",
       year == 2018 ~ "wav18",
+      year == 2019 ~ "wav19",
       TRUE ~ "seas"
     )
   ) %>% 
@@ -79,11 +91,11 @@ dts_age %>%
 smooth_age <- function(chunk){
   model <- 
     gam(flu ~ 
-          s(age, bs = 'ps', m = c(2,2), k = 30) + 
+          s(age, bs = 'ps', m = c(2,2), k = 20) + 
           offset(log(exposure)), 
         # weights = w,
         data = chunk, 
-        family = quasipoisson(link = "log"), gamma = 1e-10)
+        family = quasipoisson(link = "log"), gamma = 1e-2)
   
   test <- 
     try(
@@ -137,7 +149,7 @@ ggsave("figures/brazil/age_structure_pi.png")
 
 dts_age2 %>%
   filter(sex == "t",
-         cause %in% c("pi", "cvd", "res"),
+         cause %in% c("pi", "cvd", "res", "cvd_res"),
          period %in% c("pan09", "seas", "wav13")) %>%
   ggplot(aes(age, flu_r, col = period))+
   geom_point(size = .15, alpha = 0.8)+
@@ -172,6 +184,8 @@ dts_age2 %>%
 ggsave("figures/brazil/age_structure_waves.png",
        w = 10, 
        h = 4)
+
+
 
 seas <- 
   dts_age2 %>% 
@@ -215,7 +229,7 @@ dts_age3 %>%
   scale_x_reverse(breaks = seq(1900,2010, 10))+
   scale_y_log10(breaks = c(0.5, 0.75, 1, 1.5, 2))+
   geom_hline(yintercept = 1, linetype = "dashed")+
-  geom_vline(xintercept = c(1918, 1957, 1968, 1977), linetype = "dashed")+
+  geom_vline(xintercept = c(1918, 1957, 1968, 1977, 1984), linetype = "dashed")+
   facet_wrap(~cause)+
   theme_bw()+
   theme(axis.text.x = element_text(size = 7))
@@ -224,17 +238,20 @@ ggsave("figures/brazil/cohort_rr.png",
        w = 10, 
        h = 5)
 
+
+
+
 dts_age3 %>% 
   filter(
     sex == "t",
-    # period %in% c("pan09", "wav13", "wav16")
+    !period %in% c("pan09", "wav13", "wav12")
   ) %>% 
   ggplot()+
   geom_line(aes(cohort, rr, col = period))+
   scale_x_reverse(breaks = seq(1900,2010, 10))+
   scale_y_log10(breaks = c(0.5, 0.75, 1, 1.5, 2))+
   geom_hline(yintercept = 1, linetype = "dashed")+
-  geom_vline(xintercept = c(1918, 1957, 1968, 1977), linetype = "dashed")+
+  geom_vline(xintercept = c(1918, 1957, 1968, 1977, 1984), linetype = "dashed")+
   facet_wrap(~cause)+
   theme_bw()+
   theme(axis.text.x = element_text(size = 7),

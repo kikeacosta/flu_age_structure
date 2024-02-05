@@ -29,6 +29,18 @@ dt3 <-
   do(est_mth_epis(chunk = .data)) %>% 
   ungroup()
 
+dt3 %>% 
+  filter(age == 80,
+         sex == "t") %>% 
+  ggplot()+
+  geom_ribbon(aes(date, ymin = bsn_lc, ymax = bsn_uc), alpha = 0.2)+
+  geom_point(aes(date, dts))+
+  geom_line(aes(date, bsn))+
+  facet_wrap(~cause, scales = "free_y")+
+  theme_bw()
+  
+  
+
 # fitting again but excluding epidemic periods
 dt4 <- 
   dt3 %>% 
