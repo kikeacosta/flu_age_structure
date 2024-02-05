@@ -47,6 +47,11 @@ cut_db1 <- function(db){
     select(
       id,
       DT_NOTIFIC,
+      DT_SIN_PRI,
+      DT_NOTIFIC,
+      DT_NASC,
+      CS_SEXO,
+      NU_IDADE_N,
       PCR_RES,
       PCR_ETIOL, PCR_TIPO_H, PCR_TIPO_N,
       CULT_RES,
@@ -55,11 +60,6 @@ cut_db1 <- function(db){
       PCR,
       RES_FLUA, RES_FLUB, RES_FLUASU, 
       # DS_OUTSUB,
-      DT_SIN_PRI,
-      DT_NOTIFIC,
-      DT_NASC,
-      CS_SEXO,
-      NU_IDADE_N,
       HOSPITAL,
       EVOLUCAO,
     )
@@ -73,7 +73,7 @@ cut_db2 <- function(db){
       DT_NOTIFIC,
       POS_IF_FLU, TP_FLU_IF,
       PCR_RESUL, POS_PCRFLU, 
-      TP_FLU_PCR, PCR_FLUASU, FLUASU_OUT,
+      TP_FLU_PCR, PCR_FLUASU, 
       PCR_FLUBLI, FLUBLI_OUT 
     )
 }
@@ -91,7 +91,7 @@ dt <-
     cut_db1(in17),
     cut_db1(in18)
   ) %>% 
-  mutate(across(3:16, ~replace_na(.x, 0))) 
+  mutate(across(7:22, ~replace_na(.x, 0))) 
 
 dt2 <- 
   dt %>% 
@@ -195,11 +195,11 @@ table(flu0918$year, flu0918$typ)
 table(flu0918$year, flu0918$sub)
 table(flu0918$year, flu0918$outcome)
 
-all <- 
-  flu0918 %>% 
-  summarise(n = n(), .by = cohort) %>% 
-  mutate(cx = n / sum(n), 
-         status = "all SRAG")
+# all <- 
+#   flu0918 %>% 
+#   summarise(n = n(), .by = cohort) %>% 
+#   mutate(cx = n / sum(n), 
+#          status = "all SRAG")
 
 # ~~~~~~~~~~~~~~
 # data 2019 ====
@@ -210,10 +210,12 @@ in192 <-
   select(SG_UF_NOT, DT_NOTIFIC, SEM_NOT, DT_SIN_PRI, 
          DT_NASC, CS_SEXO, NU_IDADE_N,
          HOSPITAL, 
+         EVOLUCAO,
          PCR_RESUL, POS_PCRFLU,POS_IF_FLU, TP_FLU_IF,
-         TP_FLU_PCR, PCR_FLUASU, FLUASU_OUT, PCR_FLUBLI, FLUBLI_OUT,
-         VACINA, DT_UT_DOSE,
-         EVOLUCAO, DT_EVOLUCA)
+         TP_FLU_PCR, PCR_FLUASU, PCR_FLUBLI, FLUBLI_OUT,
+         VACINA, DT_UT_DOSE
+         ) %>% 
+  mutate(across(8:18, ~replace_na(.x, 0))) 
 
 in193 <- 
   in192 %>% 
@@ -227,7 +229,7 @@ in193 <-
          sub = case_when(PCR_FLUASU == 1 ~ "h1",
                          PCR_FLUASU == 2 ~ "h3",
                          PCR_FLUASU %in% 3:5 ~ "an",
-                         PCR_FLUASU == 6 | FLUASU_OUT == 1 ~ "ao",
+                         PCR_FLUASU == 6 ~ "h3",
                          TP_FLU_PCR == 2 ~ "b",
                          TRUE ~ "z"),
          date_bth = dmy(DT_NASC),
@@ -245,7 +247,7 @@ in193 <-
                              EVOLUCAO == 5 ~ "missing",
                              TRUE ~ "oth"),
          hosp = ifelse(HOSPITAL == 1, 1, 0),
-         date_dth = dmy(DT_EVOLUCA),
+         # date_dth = dmy(DT_EVOLUCA),
          year = year(date_flu),
          sex = CS_SEXO %>% str_to_lower(),
          age = NU_IDADE_N,
@@ -267,6 +269,8 @@ flu19 <-
   # filter(flu == 1) %>% 
   select(year, sex, age, cohort, flu, typ, sub, hosp, outcome)
 
+table(flu19$sex)
+table(flu0918$sex)
 # ~~~~~~~~~~~~~~~~~~~~~~
 # All data together ====
 # ~~~~~~~~~~~~~~~~~~~~~~
@@ -315,20 +319,6 @@ flu %>%
 #           compress = "xz")
 # write_rds(flu_prev2, "data_inter/flu_data_brazil_2009_2019_v2.rds",
 #           compress = "xz")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

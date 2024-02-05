@@ -1,9 +1,5 @@
 rm(list=ls())
-library(tidyverse)
-library(lubridate)
-library(ungroup)
-library(readxl)
-options(scipen=999)
+source("code/brazil_flu_incidence/b00_functions.R")
 
 flu <- 
   read_rds("data_inter/flu_data_brazil_exposures_2009_2019.rds")
@@ -41,6 +37,7 @@ h1 %>%
   geom_line(aes(cohort, value))+
   geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
   scale_x_continuous(breaks = seq(1900, 2020, 10))+
+  # scale_y_log10()+
   theme_bw()+
   labs(title = "H1")
 
@@ -54,6 +51,28 @@ h1 %>%
   scale_y_log10()+
   theme_bw()+
   labs(title = "H1")
+
+h1 %>% 
+  filter(cohort %in% 1918:2012) %>% 
+  ggplot()+
+  geom_point(aes(cohort, mx))+
+  geom_line(aes(cohort, mx))+
+  geom_vline(xintercept = c(1918, 1957, 1968, 2009), linetype = "dashed")+
+  scale_x_continuous(breaks = seq(1900, 2020, 10))+
+  scale_y_log10()+
+  theme_bw()+
+  labs(title = "H1")
+
+# h1 %>% 
+#   filter(cohort %in% 1910:2012) %>% 
+#   ggplot()+
+#   geom_point(aes(cohort, pop))+
+#   geom_line(aes(cohort, pop))+
+#   geom_vline(xintercept = c(1918, 1957, 1968, 2009), linetype = "dashed")+
+#   scale_x_continuous(breaks = seq(1900, 2020, 10))+
+#   scale_y_log10()+
+#   theme_bw()+
+#   labs(title = "H1")
 
 
 # H3 ====

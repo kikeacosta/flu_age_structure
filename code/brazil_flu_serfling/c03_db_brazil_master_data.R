@@ -1,6 +1,5 @@
 rm(list=ls())
-library(tidyverse)
-options(scipen=999)
+source("code/brazil_flu_incidence/b00_functions.R")
 
 dts <- read_rds("data_inter/brazil_monthly_cause_death.rds")
 pop <- read_rds("data_inter/brazil_monthly_pop.rds")
@@ -10,7 +9,7 @@ dts2 <-
   dts %>% 
   filter(cause %in% c("cvd", "res", "pi")) %>% 
   reframe(dts = sum(dts),
-          .by = date, year, month, sex, age) %>% 
+          .by = c(date, year, month, sex, age)) %>% 
   mutate(cause = "cvd_res") %>% 
   bind_rows(dts)
 

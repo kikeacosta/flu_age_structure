@@ -13,7 +13,8 @@ pop <-
   pivot_longer(c(m, f, t), 
                names_to = "sex", values_to = "pop") %>% 
   select(year, age, sex, pop) %>% 
-  mutate(month = 6)
+  mutate(pop = pop*1e3,
+         month = 6)
 
 unique(pop$age)
 

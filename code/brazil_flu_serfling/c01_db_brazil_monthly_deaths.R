@@ -1,3 +1,4 @@
+source("code/00_functions.R")
 library(readr)
 library(tidyverse)
 library(janitor)
