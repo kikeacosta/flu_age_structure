@@ -104,7 +104,7 @@ dt2 <-
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     pcr = ifelse(PCR_RES %in% 1:3 | PCR == 1, 1, 0),
     pcr = ifelse(is.na(PCR_RES) & is.na(PCR), 0, pcr),
-    test1 = ifelse(PCR_ETIOL == 1 | 
+    test1 = ifelse(PCR_ETIOL %in% 1:4 | 
                      PCR_TIPO_H %in% 1:16 |
                      PCR_TIPO_N %in% 1:9, 
                    1, 0),
@@ -115,6 +115,7 @@ dt2 <-
                    1, 0),
     test3 = ifelse(CULT_RES == 1, 1, 0),
     test4 = ifelse(RES_FLUA == 1 | 
+                     RES_FLUASU %in% 1:6 | 
                      RES_FLUB == 1,
                    1, 0),
     test5 = ifelse(CLASSI_FIN == 1, 

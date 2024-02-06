@@ -108,7 +108,7 @@ all <-
   complete(year, sex, age, fill = list(css = 0, hsp = 0, dts = 0)) %>% 
   arrange(type, year, sex, age) %>% 
   left_join(pop) %>% 
-  filter(year %in% c(2009, 2012, 2013, 2016, 2018, 2019),
+  filter(year %in% c(2009, 2012, 2013, 2016, 2017, 2018, 2019),
          sex == "t")
 
 
@@ -161,8 +161,6 @@ all %>%
   ggplot()+
   geom_point(aes(age, cfr), col = "red")
   
-
-
 
 # plots ====
 # ~~~~~~~~~~
