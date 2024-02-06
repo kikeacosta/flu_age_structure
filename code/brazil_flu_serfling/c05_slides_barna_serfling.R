@@ -220,6 +220,26 @@ ggsave("figures/brazil/bcn_slides/serf_rr_h1_coh_lines.png",
 dts_age3 %>% 
   filter(sex == "t",
          cause == "pi",
+         period %in% c("wav17"),
+         cohort %in% 1925:2010) %>% 
+  ggplot()+
+  geom_line(aes(cohort, rr, col = period))+
+  scale_x_reverse(breaks = seq(1900, 2010, 10))+
+  scale_y_log10()+
+  geom_hline(yintercept = 1, linetype = "dashed")+
+  scale_color_manual(values = cols)+
+  labs(col = "Year", y = "relative risks",
+       title = "H3 wave relative risks")+
+  theme_bw()+
+  geom_vline(xintercept = c(1957, 1968, 1984), linetype = "dashed")
+
+ggsave("figures/brazil/bcn_slides/serf_rr_h3_coh.png",
+       w = 8, h = 4)
+
+
+dts_age3 %>% 
+  filter(sex == "t",
+         cause == "pi",
          period %in% c("pan09", "wav17"),
          cohort %in% 1925:2010) %>% 
   ggplot()+
