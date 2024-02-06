@@ -183,45 +183,6 @@ all %>%
 # plots ====
 # ~~~~~~~~~~
 # Incidence
-ix %>% 
-  filter(sex == "t",
-         type %in% c("h1", "h3")) %>%
-  ggplot()+
-  geom_point(aes(age, value, col = factor(year)))+
-  geom_line(aes(age, val_smt, col = factor(year)))+
-  theme_bw()+
-  scale_x_continuous(breaks = seq(0, 100, 10))+
-  facet_wrap(~type, scales = "free_y")
-
-# over ages
-ix %>% 
-  mutate(cohort = year - age,
-         value_r = value / exposure,
-         val_smt_r = val_smt/exposure) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1910) %>%
-  ggplot()+
-  # geom_point(aes(age, value_r, col = factor(year)))+
-  geom_line(aes(age, val_smt_r, col = factor(year)))+
-  theme_bw()+
-  scale_y_log10()
-
-# over cohorts
-ix %>% 
-  mutate(cohort = year - age,
-         value_r = value / exposure,
-         val_smt_r = val_smt/exposure) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1910) %>%
-  ggplot()+
-  geom_line(aes(cohort, val_smt, col = factor(year)))+
-  geom_point(aes(cohort, val_smt, col = factor(year)))+
-  scale_x_reverse()+
-  theme_bw()+
-  scale_y_log10()+
-  geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
 
 cols <- c("#6a040f", "#d00000", "#e85d04")
 
@@ -287,118 +248,11 @@ ix %>%
 ggsave("figures/brazil/bcn_slides/surv_ix_h1_coh_lines.png",
        w = 8, h = 4)
 
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# hospitalization risk
-hsp %>% 
-  filter(sex == "t",
-         type %in% c("h1", "h3")) %>%
-  ggplot()+
-  geom_point(aes(age, value, col = factor(year)))+
-  geom_line(aes(age, val_smt, col = factor(year)))+
-  theme_bw()+
-  scale_x_continuous(breaks = seq(0, 100, 10))+
-  facet_wrap(~type, scales = "free_y")
-
-# over ages
-hsp %>% 
-  mutate(cohort = year - age,
-         value_r = value / exposure,
-         val_smt_r = val_smt/exposure) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1910) %>%
-  ggplot()+
-  # geom_point(aes(age, value_r, col = factor(year)))+
-  geom_line(aes(age, val_smt_r, col = factor(year)))+
-  theme_bw()+
-  scale_y_log10()
-
-# over cohorts
-hsp %>% 
-  mutate(cohort = year - age,
-         value_r = value / exposure,
-         val_smt_r = val_smt/exposure) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1910) %>%
-  ggplot()+
-  geom_line(aes(cohort, val_smt, col = factor(year)))+
-  geom_point(aes(cohort, val_smt, col = factor(year)))+
-  scale_x_reverse()+
-  theme_bw()+
-  scale_y_log10()+
-  geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
-
-
-hsp %>% 
-  mutate(cohort = year - age,
-         value_r = value / exposure,
-         val_smt_r = val_smt/exposure) %>% 
-  filter(sex == "t",
-         type == "h3",
-         cohort >= 1920) %>%
-  ggplot()+
-  geom_line(aes(cohort, val_smt_r, col = factor(year)))+
-  theme_bw()+
-  scale_y_log10()+
-  scale_x_reverse()+
-  geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
-
-
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # mortality ====
 # ~~~~~~~~~~~~~~
-# death counts
-mx %>% 
-  mutate(cohort = year - age,
-         value_r = value / exposure,
-         val_smt_r = val_smt/exposure) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1910) %>%
-  ggplot()+
-  geom_point(aes(age, value, col = factor(year)))+
-  geom_line(aes(age, val_smt, col = factor(year)))+
-  # facet_wrap(~year, scales = "free_y")+
-  theme_bw()
-
 # death rates
-mx %>% 
-  mutate(cohort = year - age,
-         value_r = value / exposure,
-         val_smt_r = val_smt/exposure) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1925) %>%
-  ggplot()+
-  # geom_point(aes(age, value))+
-  geom_line(aes(age, val_smt_r, col = factor(year)))+
-  scale_y_log10()+
-  # facet_wrap(~year, scales = "free_y")+
-  theme_bw()
-
-# death rates over cohorts
-mx %>% 
-  mutate(cohort = year - age,
-         value_r = value / exposure,
-         val_smt_r = val_smt/exposure) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1925) %>%
-  ggplot()+
-  geom_line(aes(cohort, val_smt_r, col = factor(year)))+
-  scale_y_log10()+
-  # facet_wrap(~year, scales = "free_y")+
-  theme_bw()+
-  geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
-
-
-
 mx %>% 
   mutate(cohort = year - age,
          value_r = 1e5*value / exposure,
@@ -464,8 +318,75 @@ ggsave("figures/brazil/bcn_slides/surv_mx_h1_coh_lines.png",
        w = 8, h = 4)
 
 
+mx %>% 
+  mutate(cohort = year - age,
+         value_r = 1e5*value / exposure,
+         val_smt_r = 1e5*val_smt/exposure) %>% 
+  filter(sex == "t",
+         type %in% c("h1", "nonflu"),
+         year %in% c(2009, 2013, 2016),
+         cohort %in% 1925:2010) %>%
+  ggplot()+
+  geom_line(aes(cohort, val_smt_r, col = factor(year), linetype = type))+
+  # geom_point(aes(cohort, value_r, col = factor(year), linetype = type), 
+  #            alpha = 0.4, size = 0.5)+
+  scale_y_log10()+
+  scale_x_reverse(breaks = seq(1900, 2010, 10))+
+  scale_color_manual(values = cols)+
+  # facet_wrap(~year, scales = "free_y")+
+  labs(col = "Year", y = "death rates (/100K)")+
+  theme_bw()+
+  geom_vline(xintercept = c(1957, 1968, 1984), linetype = "dashed")
+
+ggsave("figures/brazil/bcn_slides/surv_mx_h1_ref_coh_lines.png",
+       w = 8, h = 4)
 
 
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# relative risks ====
+# ~~~~~~~~~~~~~~~~~~~
+# H1 relative to all not identified as flu
+unique(mx$type)
+
+rrh1 <- 
+  mx %>% 
+  filter(type == "h1") %>% 
+  select(year, age, css_h1 = css, dts_h1 = value, dts_h1_smt = val_smt) %>% 
+  left_join(mx %>% 
+                filter(type == "nonflu") %>% 
+                select(year, age, css_nf = css, dts_nf = value, dts_nf_smt = val_smt)) %>% 
+  mutate(rr_h1 = dts_h1/dts_nf,
+         rr_h1_smt = dts_h1_smt/dts_nf_smt,
+         cohort = year - age)
+
+
+rrh1 %>% 
+  filter(
+    # sex == "t",
+    # type == "h1",
+    year %in% c(2009, 2013, 2016),
+    cohort %in% 1925:2010
+  ) %>%
+  ggplot()+
+  geom_line(aes(cohort, rr_h1_smt, col = factor(year)))+
+  geom_point(aes(cohort, rr_h1, col = factor(year)), alpha = 0.4, size = 0.5)+
+  
+  scale_y_log10()+
+  scale_x_reverse(breaks = seq(1900, 2010, 10))+
+  scale_color_manual(values = cols)+
+  # facet_wrap(~year, scales = "free_y")+
+  labs(col = "Year", y = "relative risks")+
+  theme_bw()+
+  geom_hline(yintercept = 1, linetype = "dashed")+
+  geom_vline(xintercept = c(1957, 1968, 1984), linetype = "dashed")
+
+ggsave("figures/brazil/bcn_slides/surv_rr_h1_coh_lines.png",
+       w = 8, h = 4)
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 # case fatality rates ====
@@ -510,253 +431,9 @@ cfr %>%
   theme_bw()+
   geom_vline(xintercept = c(1957, 1968, 1984, 2009), linetype = "dashed")
 
-# relative risks
-# H1 relative to all not identified as flu
-rrh1 <- 
-  h1 %>% 
-  select(year, age, css_h1 = css, dts_h1 = dts) %>% 
-  left_join()
-
-
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-# total flu circulation ====
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# cases ====
-# ~~~~~~~~~~
-
-css_ili <- 
-  dt2 %>% 
-  summarise(value = n(), 
-            .by = c(year, sex, age))
-
-css_flu <- 
-  dt2 %>% 
-  filter(flu == 1) %>% 
-  summarise(value = n(), 
-            .by = c(year, sex, age))
-
-css_h1 <- 
-  dt2 %>% 
-  filter(sub == "h1") %>% 
-  summarise(value = n(), 
-            .by = c(year, sex, age))
-
-css_h3 <- 
-  dt2 %>% 
-  filter(sub == "h3") %>% 
-  summarise(value = n(), 
-            .by = c(year, sex, age))
-
-# deaths ====
-# ~~~~~~~~~~
-dths_names <- c("death_flu","death_oth", "death_inv")
-unique(dt2$outcome)
-
-dts_ili <- 
-  dt2 %>% 
-  filter(outcome %in% dths_names) %>% 
-  summarise(value = n(), 
-            .by = c(year, sex, age)) %>% 
-  spread(age, value)
-
-dts_flu <- 
-  dt2 %>% 
-  filter(flu == 1,
-         outcome %in% dths_names) %>% 
-  summarise(value = n(), 
-            .by = c(year, sex, age))
-
-dts_h1 <- 
-  dt2 %>% 
-  filter(sub == "h1",
-         outcome %in% dths_names) %>% 
-  summarise(value = n(), 
-            .by = c(year, sex, age))
-
-dts_h3 <- 
-  dt2 %>% 
-  filter(sub == "h3") %>% 
-  summarise(value = n(), 
-            .by = c(year, sex, age))
-
-
-
-
-# 
-flu0 %>% 
-  filter(sub %in% c("h1", "h3")) %>% 
-  ggplot()+
-  geom_line(aes(cohort, value, col = sub))+
-  theme_bw()
-
-# flu circulation by sex, age, and subtype ====
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-flu2 <- 
-  flu %>% 
-  # filter(sub %in% c("h1", "h3", "b")) %>% 
-  # mutate(age2 = interval(ymd(date_bth), ymd(date_flu)) %>% as.numeric('years'),
-  #        age2 = round(age2),
-  #        age = ifelse(is.na(age), age2, age)) %>% 
-  # select(-age2) %>% 
-  summarise(value = n(), .by = c(year, sex, age, sub, hosp, outcome)) %>% 
-  drop_na(age)
-
-ili <- 
-  flu2 %>% 
-  summarise(value = sum(value), .by = c(year, sex, age, sub)) %>% 
-  mutate(outcome = "cases")
-
-css <- 
-  flu2 %>% 
-  summarise(value = sum(value), .by = c(year, sex, age, sub)) %>% 
-  mutate(outcome = "cases")
-
-hsp <- 
-  flu2 %>% 
-  filter(hosp == 1) %>% 
-  summarise(value = sum(value), .by = c(year, sex, age, sub)) %>% 
-  mutate(outcome = "hosps")
-
-dts <- 
-  flu2 %>% 
-  filter(outcome == "death_flu") %>% 
-  summarise(value = sum(value), .by = c(year, sex, age, sub)) %>% 
-  mutate(outcome = "deaths")
-
-flu3 <- 
-  bind_rows(dts, css) %>% 
-  group_by(year, age, outcome, sub) %>% 
-  summarise(value = sum(value)) %>% 
-  ungroup() %>% 
-  mutate(sex = "t") %>% 
-  bind_rows(dts, css) %>% 
-  mutate(cohort = year - age) %>% 
-  left_join(pop2) %>% 
-  drop_na(age) %>% 
-  mutate(mx = 1e5 * value / pop)
-
-flu3 %>% 
-  filter(sex == "t") %>% 
-  group_by(sub, outcome) %>% 
-  summarise(sum(value))
-
-write_rds(flu3, "data_inter/flu_data_brazil_exposures_2009_2019.rds")
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-flu3 <- read_rds("data_inter/flu_data_brazil_exposures_2009_2019.rds")
-
-# H1 ====
-# ~~~~~~~
-h1 <- 
-  flu3 %>% 
-  filter(sub == "h1",
-         sex == "t",
-         outcome == "deaths") %>% 
-  group_by(cohort, sex) %>% 
-  summarise(css = sum(css),
-            pop = sum(pop)) %>% 
-  ungroup() %>% 
-  mutate(ins = 1e5 * css / pop)
-
-h1 %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, css))+
-  geom_line(aes(cohort, css))+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  theme_bw()+
-  labs(title = "H1")
-
-h1 %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, ins))+
-  geom_line(aes(cohort, ins))+
-  geom_vline(xintercept = c(1918, 1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  scale_y_log10()+
-  theme_bw()+
-  labs(title = "H1")
-
-
-# H3 ====
-# ~~~~~~~
-h3 <- 
-  flu3 %>% 
-  filter(sub == "h3",
-         sex == "t",
-         outcome == "death") %>% 
-  group_by(cohort, sex) %>% 
-  summarise(css = sum(css),
-            pop = sum(pop)) %>% 
-  ungroup() %>% 
-  mutate(ins = 1e5 * css / pop)
-
-h3 %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, css))+
-  geom_line(aes(cohort, css))+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  theme_bw()+
-  labs(title = "H3")
-
-h3 %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, ins))+
-  geom_line(aes(cohort, ins))+
-  geom_vline(xintercept = c(1918, 1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  scale_y_log10()+
-  theme_bw()+
-  labs(title = "H3")
-
-hs <- 
-  flu3 %>% 
-  filter(sub %in% c("h1", "h3"), sex == "t") %>% 
-  group_by(sub, cohort) %>% 
-  summarise(css = sum(css),
-            pop = sum(pop)) %>% 
-  ungroup() %>% 
-  mutate(mx = 1e5*css/pop) %>% 
-  group_by(sub) %>% 
-  mutate(cx_cs = css / sum(css),
-         cx_mx = mx / sum(mx)) %>% 
-  ungroup()
-
-hs %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, cx_cs, col = sub))+
-  geom_line(aes(cohort, cx_cs, col = sub))+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  theme_bw()+
-  labs(title = "cohort structure of infections")
-
-hs %>% 
-  filter(cohort %in% 1910:2012) %>% 
-  ggplot()+
-  geom_point(aes(cohort, cx_mx, col = sub))+
-  geom_line(aes(cohort, cx_mx, col = sub))+
-  geom_vline(xintercept = c(1957, 1968, 2009), linetype = "dashed")+
-  scale_x_continuous(breaks = seq(1900, 2020, 10))+
-  scale_y_log10()+
-  theme_bw()+
-  labs(title = "cohort structure of infection rates")
-

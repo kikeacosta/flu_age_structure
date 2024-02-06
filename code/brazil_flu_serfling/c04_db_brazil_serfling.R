@@ -5,6 +5,20 @@ dt <- read_rds("data_inter/brazil_monthly_master.rds")
 
 unique(dt$cause)
 
+
+
+t <- dt %>% 
+  filter(sex == "t",
+         year %in% c(2009, 2017)) %>% 
+  group_by(year, age, cause) %>% 
+  summarise(dts = sum(dts)) 
+
+t %>% 
+  filter(age %in% 15:35) %>% 
+  ggplot()+
+  geom_point(aes(age, dts, col = factor(year)))+
+  facet_wrap(~cause, scales = "free_y")
+
 dt2 <- 
   dt %>% 
   filter(year < 2020) %>% 

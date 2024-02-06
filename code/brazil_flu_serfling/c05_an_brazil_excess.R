@@ -5,6 +5,34 @@ options(scipen=999)
 
 dt <- read_rds("data_inter/brazil_monthly_baselines.rds")
 
+
+t <- dt %>% 
+  filter(sex == "t",
+         year %in% c(2009)) %>% 
+  group_by(year, age, cause) %>% 
+  summarise(dts = sum(dts),
+            bsn = sum(bsn),
+            pop = sum(exposure)) %>% 
+  mutate(mx = dts/pop,
+         bsn_r = bsn/pop)
+
+t %>% 
+  # filter(age %in% 10:55) %>% 
+  ggplot()+
+  geom_point(aes(age, dts, col = factor(year)))+
+  geom_line(aes(age, bsn, col = factor(year)))+
+  facet_wrap(~cause, scales = "free_y")
+
+t %>% 
+  # filter(age %in% 10:55) %>% 
+  ggplot()+
+  geom_point(aes(age, mx, col = factor(year)))+
+  geom_line(aes(age, bsn_r, col = factor(year)))+
+  facet_wrap(~cause, scales = "free_y")+
+  scale_y_log10()
+
+
+
 dt %>% 
   filter(age == 80,
          cause == "pi",
@@ -153,7 +181,7 @@ ggsave("figures/brazil/age_structure_pi.png")
 dts_age2 %>%
   filter(sex == "t",
          cause %in% c("pi", "cvd", "res", "cvd_res"),
-         period %in% c("pan09", "seas", "wav17")) %>%
+         period %in% c("wav17", "wav14", "wav15", "wav13", "pan09")) %>%
   ggplot(aes(age, flu_r, col = period))+
   geom_point(size = .15, alpha = 0.8)+
   # geom_smooth(method = lm, formula = y ~ splines::bs(x, 8), se = FALSE)+
@@ -193,14 +221,15 @@ ggsave("figures/brazil/age_structure_waves.png",
 seas <- 
   dts_age2 %>% 
   filter(period == "seas") %>% 
-  select(cause, sex, age, ref_flu_smt_r = flu_smt_r)
+  select(cause, sex, age, ref_flu_smt_r = flu_smt_r, ref_flu_r = flu_r)
 
 dts_age3 <- 
   dts_age2 %>% 
   filter(period != "seas") %>% 
-  select(period, year, cause, sex, age, flu_smt_r) %>% 
+  select(period, year, cause, sex, age, flu_r, flu_smt_r) %>% 
   left_join(seas) %>% 
   mutate(rr = flu_smt_r / ref_flu_smt_r,
+         rr_raw = flu_r / ref_flu_r,
          cohort = year - age)
 
 dts_age3 %>% 
@@ -215,7 +244,7 @@ dts_age3 %>%
 
 dts_age3 %>% 
   filter(sex == "t",
-         period %in% c("pan09", "wav13")) %>% 
+         period %in% c("pan09", "wav17", "wav15", "wav14")) %>% 
   ggplot()+
   geom_line(aes(age, rr, col = period))+
   scale_x_continuous(breaks = seq(0,100, 10))+
@@ -226,7 +255,7 @@ dts_age3 %>%
 
 dts_age3 %>% 
   filter(sex == "t",
-         period %in% c("pan09", "wav13", "wav16")) %>% 
+         period %in% c("pan09", "wav17", "wav15", "wav14")) %>% 
   ggplot()+
   geom_line(aes(cohort, rr, col = period))+
   scale_x_reverse(breaks = seq(1900,2010, 10))+
@@ -245,6 +274,7 @@ dts_age3 %>%
   filter(sex == "t",
          period %in% c("pan09", "wav17")) %>% 
   ggplot()+
+  geom_point(aes(cohort, rr_raw, col = period), alpha = 0.3)+
   geom_line(aes(cohort, rr, col = period))+
   scale_x_reverse(breaks = seq(1900,2010, 10))+
   scale_y_log10(breaks = c(0.5, 0.75, 1, 1.5, 2))+
@@ -254,7 +284,7 @@ dts_age3 %>%
   theme_bw()+
   theme(axis.text.x = element_text(size = 7))
 
-ggsave("figures/brazil/cohort_rr.png",
+ggsave("figures/brazil/cohort_rr_2009_2017.png",
        w = 10, 
        h = 5)
 
