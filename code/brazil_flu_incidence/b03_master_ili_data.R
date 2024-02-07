@@ -288,7 +288,6 @@ ggsave("figures/brazil/bcn_slides/surv_ix_h1_coh_lines.png",
        w = 8, h = 4)
 
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # hospitalization risk
 hsp %>% 
