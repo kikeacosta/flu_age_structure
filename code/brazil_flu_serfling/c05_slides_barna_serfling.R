@@ -198,7 +198,7 @@ h1_coh <-
   ggplot()+
   geom_line(aes(cohort, rr, col = period))+
   scale_x_reverse(breaks = seq(1900, 2010, 10))+
-  scale_y_log10()+
+  scale_y_log10(breaks = c(0.8, 1, 1.5, 2, 2.5))+
   geom_hline(yintercept = 1, linetype = "dashed")+
   scale_color_manual(values = cols)+
   labs(col = "Year", y = "relative risks",
@@ -208,14 +208,49 @@ h1_coh <-
 ggsave("figures/brazil/bcn_slides/serf_rr_h1_coh.png",
        w = 8, h = 4)
 
-
 h1_coh+
-  geom_vline(xintercept = c(1957, 1968, 1984), linetype = "dashed")
+  geom_vline(xintercept = c(1957, 1968), linetype = "dashed", 
+             col = c("#7b2cbf", "#3a86ff"))+
+  geom_text(aes(x = 1969, y = 0.8),
+            label = "1968 H3N2 pandemic", angle = 90,
+            size = 3, hjust = 0, col = "#3a86ff")+
+  geom_text(aes(x = 1958, y = 0.8), 
+            label = "1957 H2N2 pandemic", angle = 90, 
+            size = 3, hjust = 0, col = "#7b2cbf")
 
 ggsave("figures/brazil/bcn_slides/serf_rr_h1_coh_lines.png",
        w = 8, h = 4)
 
+# replica of US and Mexico
+dts_age3 %>% 
+  filter(sex == "t",
+         cause == "pi",
+         period %in% c("pan09", "seas", "wav13"),
+         cohort %in% 1925:2010) %>% 
+  ggplot()+
+  geom_line(aes(cohort, rr, col = period))+
+  scale_x_reverse(breaks = seq(1900, 2010, 10))+
+  scale_y_log10(breaks = c(0.8, 1, 1.5, 2, 2.5))+
+  geom_hline(yintercept = 1, linetype = "dashed")+
+  scale_color_manual(values = c("#d00000", "#3a86ff"))+
+  labs(col = "Year", y = "relative risks")+
+  theme_bw()+
+  geom_vline(xintercept = c(1957, 1968), linetype = "dashed", 
+             col = c("#7b2cbf", "#3a86ff"))+
+  geom_text(aes(x = 1969, y = 0.8),
+            label = "1968 H3N2 pandemic", angle = 90,
+            size = 3, hjust = 0, col = "#3a86ff")+
+  geom_text(aes(x = 1958, y = 0.8), 
+            label = "1957 H2N2 pandemic", angle = 90, 
+            size = 3, hjust = 0, col = "#7b2cbf")
 
+ggsave("figures/brazil/bcn_slides/serf_rr_h1_coh_lines_rep_mbio.png",
+       w = 8, h = 4)
+
+
+
+# H3N2 relative risks (2017) ====
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 dts_age3 %>% 
   filter(sex == "t",
@@ -225,13 +260,20 @@ dts_age3 %>%
   ggplot()+
   geom_line(aes(cohort, rr, col = period))+
   scale_x_reverse(breaks = seq(1900, 2010, 10))+
-  scale_y_log10()+
+  scale_y_log10(breaks = c(0.6, 0.8, 1, 1.3))+
   geom_hline(yintercept = 1, linetype = "dashed")+
   scale_color_manual(values = cols)+
   labs(col = "Year", y = "relative risks",
        title = "H3 wave relative risks")+
   theme_bw()+
-  geom_vline(xintercept = c(1957, 1968, 1984), linetype = "dashed")
+  geom_vline(xintercept = c(1957, 1968), linetype = "dashed", 
+             col = c("#7b2cbf", "#3a86ff"))+
+  geom_text(aes(x = 1969, y = 0.6),
+            label = "1968 H3N2 pandemic", angle = 90,
+            size = 3, hjust = 0, col = "#3a86ff")+
+  geom_text(aes(x = 1958, y = 0.6), 
+            label = "1957 H2N2 pandemic", angle = 90, 
+            size = 3, hjust = 0, col = "#7b2cbf")
 
 ggsave("figures/brazil/bcn_slides/serf_rr_h3_coh.png",
        w = 8, h = 4)
@@ -245,14 +287,20 @@ dts_age3 %>%
   ggplot()+
   geom_line(aes(cohort, rr, col = period))+
   scale_x_reverse(breaks = seq(1900, 2010, 10))+
-  scale_y_log10()+
+  scale_y_log10(breaks = c(0.6, 0.8, 1, 1.5, 2, 2.5))+
   geom_hline(yintercept = 1, linetype = "dashed")+
   scale_color_manual(values = cols)+
   labs(col = "Year", y = "relative risks",
        title = "H1 pandemic vs. H3 wave")+
   theme_bw()+
-  geom_vline(xintercept = c(1957, 1968, 1984), linetype = "dashed")
-
+  geom_vline(xintercept = c(1957, 1968), linetype = "dashed", 
+             col = c("#7b2cbf", "#3a86ff"))+
+  geom_text(aes(x = 1969, y = 0.6),
+            label = "1968 H3N2 pandemic", angle = 90,
+            size = 3, hjust = 0, col = "#3a86ff")+
+  geom_text(aes(x = 1958, y = 0.6), 
+            label = "1957 H2N2 pandemic", angle = 90, 
+            size = 3, hjust = 0, col = "#7b2cbf")
 ggsave("figures/brazil/bcn_slides/serf_rr_h1_h3_coh.png",
        w = 8, h = 4)
 
@@ -274,8 +322,14 @@ dts_age3 %>%
   labs(col = "Year", y = "relative risks",
        title = "H1 pandemic vs. H3 wave")+
   theme_bw()+
-  geom_vline(xintercept = c(1957, 1968, 1984), linetype = "dashed")
-
+  geom_vline(xintercept = c(1957, 1968), linetype = "dashed", 
+             col = c("#7b2cbf", "#3a86ff"))+
+  geom_text(aes(x = 1969, y = 0.8),
+            label = "1968 H3N2 pandemic", angle = 90,
+            size = 3, hjust = 0, col = "#3a86ff")+
+  geom_text(aes(x = 1958, y = 0.8), 
+            label = "1957 H2N2 pandemic", angle = 90, 
+            size = 3, hjust = 0, col = "#7b2cbf")
 ggsave("figures/brazil/bcn_slides/serf_rr_h1_h3_coh_test.png",
        w = 8, h = 4)
 
