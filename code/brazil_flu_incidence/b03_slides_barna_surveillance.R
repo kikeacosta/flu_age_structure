@@ -51,8 +51,8 @@ dt2 <-
                       1, 0))
 
 
-# deaths
-dt2 %>% 
+# # deaths
+# dt2 %>% 
   
 
 
@@ -82,15 +82,25 @@ dts_epi <-
 
 dts_epi %>% summarise(value = sum(value), .by = sub)
 
+props <- 
+  dts_epi %>% 
+  spread(sub, value) %>% 
+  mutate(t = h1+h3,
+         h1 = h1/t, 
+         h3 = h3/t) %>% 
+  select(-t) %>% 
+  gather(h1, h3, key = sub, value = value) %>% 
+  mutate(type = "Share")
+
 css_dts_epi <- 
-  bind_rows(css_epi, dts_epi)
+  bind_rows(css_epi, dts_epi, props)
 
 css_dts_epi %>% 
   ggplot(aes(fill=sub, y=value, x=year))+
-  facet_grid(~type, scales = "free", space = "free")+
+  facet_wrap(~type, scales = "free_x")+
   geom_bar(position="stack", stat="identity")+
   scale_x_continuous(breaks = 2009:2019)+
-  scale_y_continuous(breaks = seq(0, 15000, 2000))+
+  scale_y_continuous()+
   scale_fill_manual(values = cols)+
   theme_bw()+
   theme(strip.background = element_blank(),
@@ -98,8 +108,8 @@ css_dts_epi %>%
   coord_flip(expand = 0)+
   labs(y = "Flu cases", x = "Year", fill = "Flu\nsubtype")
 
-ggsave("figures/brazil/bcn_slides/surv_data_cases_deaths.png",
-       w = 6, h = 3)
+# ggsave("figures/brazil/bcn_slides/surv_data_cases_deaths.png",
+#        w = 8, h = 3)
 
 css_epi %>% 
   ggplot(aes(fill=sub, y=value, x=year))+
@@ -112,12 +122,13 @@ css_epi %>%
   coord_flip(expand = 0)+
   labs(y = "Flu deaths", x = "Year", fill = "Flu\nsubtype")
 
-ggsave("figures/brazil/bcn_slides/surv_data_cases_prop.png",
-       w = 6, h = 3)
+# ggsave("figures/brazil/bcn_slides/surv_data_cases_prop.png",
+#        w = 6, h = 3)
 
 
 
 # grouping data 
+{
 # ili
 ili <- 
   dt2 %>%
@@ -179,16 +190,20 @@ h3 <-
 
 non_flu <- 
   dt2 %>% 
-  filter(sex == "t") %>% 
-  filter(flu != 1,
-         sub == "z") %>% 
+  filter(
+    sex == "t",
+    # flu != 1,
+    # sub == "z",
+    !(sub %in% c("h1", "ab"))
+    ) %>% 
+  filter() %>% 
   # mutate(dth = ifelse(outcome == "death_flu", 1, 0)) %>% 
   summarise(css = sum(value),
             hsp = sum(hosp*value),
             dts = sum(dth*value),
             .by = c(year, sex, age)) %>% 
   mutate(type = "nonflu")
-
+}
 # putting all together
 all <- 
   bind_rows(ili, sari, flu, h1, h3, non_flu) %>% 
@@ -201,7 +216,7 @@ all <-
 
 # smoothing rates along ages ====
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+{
 # incidence
 ix <- 
   all %>% 
@@ -245,7 +260,7 @@ all %>%
   mutate(cfr = dts/css) %>% 
   ggplot()+
   geom_point(aes(age, cfr), col = "red")
-  
+}
 
 # plots ====
 # ~~~~~~~~~~
@@ -271,8 +286,8 @@ ix %>%
   scale_x_continuous(breaks = seq(0, 100, 10))
   # geom_vline(xintercept = c(1957, 1968, 1984), linetype = "dashed")
 
-ggsave("figures/brazil/bcn_slides/surv_ix_h1_age.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/surv_ix_h1_age.png",
+#        w = 8, h = 4)
 
 
 ix %>% 
@@ -291,8 +306,8 @@ ix %>%
   labs(col = "Year", y = "incidence (/100K)")+
   scale_y_log10()+
   scale_x_reverse(breaks = seq(1920, 2010, 10))
-ggsave("figures/brazil/bcn_slides/surv_ix_h1_coh.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/surv_ix_h1_coh.png",
+#        w = 8, h = 4)
 
 ix %>% 
   mutate(cohort = year - age,
@@ -312,8 +327,8 @@ ix %>%
   scale_x_reverse(breaks = seq(1920, 2010, 10))+
   geom_vline(xintercept = c(1957, 1968), linetype = "dashed")
 
-ggsave("figures/brazil/bcn_slides/surv_ix_h1_coh_lines.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/surv_ix_h1_coh_lines.png",
+#        w = 8, h = 4)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -337,8 +352,8 @@ mx %>%
   # facet_wrap(~year, scales = "free_y")+
   labs(col = "Year", y = "death rates (/100K)")+
   theme_bw()
-ggsave("figures/brazil/bcn_slides/surv_mx_h1_age.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/surv_mx_h1_age.png",
+#        w = 8, h = 4)
 
 
 mx %>% 
@@ -358,8 +373,8 @@ mx %>%
   # facet_wrap(~year, scales = "free_y")+
   labs(col = "Year", y = "death rates (/100K)")+
   theme_bw()
-ggsave("figures/brazil/bcn_slides/surv_mx_h1_coh.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/surv_mx_h1_coh.png",
+#        w = 8, h = 4)
 
 
 mx %>% 
@@ -388,8 +403,8 @@ mx %>%
             label = "1957 H2N2 pandemic", angle = 90, 
             size = 3, hjust = 0, col = "#7b2cbf")
 
-ggsave("figures/brazil/bcn_slides/surv_mx_h1_coh_lines.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/surv_mx_h1_coh_lines.png",
+#        w = 8, h = 4)
 
 
 mx %>% 
@@ -420,8 +435,8 @@ mx %>%
             label = "1957 H2N2 pandemic", angle = 90, 
             size = 3, hjust = 0, col = "#7b2cbf")
 
-ggsave("figures/brazil/bcn_slides/surv_mx_h1_ref_coh_lines.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/surv_mx_h1_ref_coh_lines.png",
+#        w = 8, h = 4)
 
 
 
@@ -509,52 +524,3 @@ ggsave("figures/brazil/bcn_slides/surv_rr_h1_coh_lines.png",
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-# case fatality rates ====
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-# over age
-cfr %>% 
-  mutate(cohort = year - age) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1910) %>%
-  ggplot()+
-  geom_point(aes(age, value_r, col = factor(year)))+
-  geom_line(aes(age, val_smt_r, col = factor(year)))+
-  # facet_wrap(~year, scales = "free_y")+
-  theme_bw()
-
-# over cohorts
-cfr %>% 
-  mutate(cohort = year - age) %>% 
-  filter(sex == "t",
-         type == "h1",
-         cohort >= 1920) %>%
-  ggplot()+
-  geom_point(aes(cohort, value_r, col = factor(year)))+
-  geom_line(aes(cohort, val_smt_r, col = factor(year)))+
-  # facet_wrap(~year, scales = "free_y")+
-  theme_bw()+
-  geom_vline(xintercept = c(1957, 1968, 1985, 2009), linetype = "dashed")
-
-# selected waves
-cfr %>% 
-  mutate(cohort = year - age) %>% 
-  filter(sex == "t",
-         type == "h1",
-         year %in% c(2009, 2012, 2013, 2016),
-         cohort >= 1920) %>%
-  ggplot()+
-  geom_point(aes(cohort, value_r, col = factor(year)))+
-  geom_line(aes(cohort, val_smt_r, col = factor(year)))+
-  # facet_wrap(~year, scales = "free_y")+
-  scale_x_reverse()+
-  theme_bw()+
-  geom_vline(xintercept = c(1957, 1968, 1984, 2009), linetype = "dashed")
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

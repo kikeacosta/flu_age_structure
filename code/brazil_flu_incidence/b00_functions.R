@@ -13,7 +13,7 @@ smooth_age <- function(chunk){
   try(
     model <- 
     gam(value ~ 
-          s(age, bs = 'ps', m = c(2,2), k = 30) + 
+          s(age, bs = 'ps', m = c(2,2), k = 25) + 
           offset(log(exposure)), 
         # weights = w,
         data = chunk, 

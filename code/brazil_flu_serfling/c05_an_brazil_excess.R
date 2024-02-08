@@ -31,18 +31,24 @@ t %>%
   facet_wrap(~cause, scales = "free_y")+
   scale_y_log10()
 
-
-
 dt %>% 
-  filter(age == 80,
+  filter(age %in% c(60),
          cause == "pi",
          sex == "t") %>% 
+  mutate(tmp_up = ifelse(dts > bsn_up, dts, bsn_up),
+         tmp_dn = ifelse(dts > bsn_up, bsn, bsn_up)) %>% 
   ggplot()+
-  geom_point(aes(date, dts))+
-  geom_line(aes(date, bsn))+
-  scale_x_date(breaks = "1 year", date_labels= "%Y")
-
-
+  # facet_wrap(~-age, ncol = 1, scales = "free_y")+
+  geom_ribbon(aes(date, ymin = bsn_lp, ymax = bsn_up), 
+              fill = "blue", alpha = .2)+
+  geom_ribbon(aes(date, ymin = tmp_dn, ymax = tmp_up), 
+              fill = "red", alpha = .5)+
+  geom_line(aes(date, dts))+
+  geom_line(aes(date, bsn), col = "blue")+
+  scale_x_date(breaks = "1 year", date_labels= "%Y")+
+  theme_bw()+
+  labs(y = "death counts", x = "time in months")+
+  theme(strip.background = element_blank())
 
 dts_age <- 
   dt %>% 

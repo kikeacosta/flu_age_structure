@@ -5,6 +5,55 @@ options(scipen=999)
 
 dt <- read_rds("data_inter/brazil_monthly_baselines.rds")
 
+dt %>% 
+  filter(age %in% c(60),
+         cause == "pi",
+         sex == "t") %>% 
+  mutate(tmp_up = ifelse(dts > bsn_up, dts, bsn_up),
+         tmp_dn = ifelse(dts > bsn_up, bsn, bsn_up)) %>% 
+  ggplot()+
+  # facet_wrap(~-age, ncol = 1, scales = "free_y")+
+  geom_ribbon(aes(date, ymin = bsn_lp, ymax = bsn_up), 
+              fill = "blue", alpha = .2)+
+  # geom_ribbon(aes(date, ymin = tmp_dn, ymax = tmp_up), 
+  #             fill = "red", alpha = .5)+
+  geom_line(aes(date, dts))+
+  geom_line(aes(date, bsn), col = "blue")+
+  scale_x_date(breaks = "2 year", date_labels= "%Y")+
+  theme_bw()+
+  labs(y = "death counts", x = "time in months")+
+  theme(strip.background = element_blank())
+
+ggsave("figures/brazil/bcn_slides/serf_exmp1.png",
+       w = 10, h = 2)
+
+dt %>% 
+  filter(age %in% c(60),
+         cause == "pi",
+         sex == "t") %>% 
+  mutate(tmp_up = ifelse(dts > bsn_up, dts, bsn_up),
+         tmp_dn = ifelse(dts > bsn_up, bsn, bsn_up)) %>% 
+  ggplot()+
+  # facet_wrap(~-age, ncol = 1, scales = "free_y")+
+  geom_ribbon(aes(date, ymin = bsn_lp, ymax = bsn_up), 
+              fill = "blue", alpha = .2)+
+  geom_ribbon(aes(date, ymin = tmp_dn, ymax = tmp_up), 
+              fill = "red", alpha = .5)+
+  geom_line(aes(date, dts))+
+  geom_line(aes(date, bsn), col = "blue")+
+  scale_x_date(breaks = "2 year", date_labels= "%Y")+
+  theme_bw()+
+  labs(y = "death counts", x = "time in months")+
+  theme(strip.background = element_blank())
+
+ggsave("figures/brazil/bcn_slides/serf_exmp2.png",
+       w = 10, h = 2)
+
+
+
+
+
+
 dts_age <- 
   dt %>% 
   mutate(
@@ -45,7 +94,7 @@ smooth_age <- function(chunk){
           offset(log(exposure)), 
         # weights = w,
         data = chunk, 
-        family = quasipoisson(link = "log"), gamma = 1e-2)
+        family = quasipoisson(link = "log"), gamma = 1e-5)
   
   test <- 
     try(
@@ -111,8 +160,8 @@ dts_age2 %>%
   # facet_wrap(~cause, scales = "free_y")+
   theme_bw()
 
-ggsave("figures/brazil/bcn_slides/serf_mx_h1_h3_age.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/serf_mx_h1_h3_age.png",
+#        w = 8, h = 4)
 
 dts_age2 %>%
   filter(sex == "t",
@@ -129,8 +178,8 @@ dts_age2 %>%
   # facet_wrap(~cause, scales = "free_y")+
   theme_bw()
 
-ggsave("figures/brazil/bcn_slides/serf_mx_h1_age.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/serf_mx_h1_age.png",
+#        w = 8, h = 4)
 
 
 dts_age2 %>%
@@ -148,8 +197,8 @@ dts_age2 %>%
   # facet_wrap(~cause, scales = "free_y")+
   theme_bw()
 
-ggsave("figures/brazil/bcn_slides/serf_mx_h3_age.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/serf_mx_h3_age.png",
+#        w = 8, h = 4)
 
 
 
@@ -186,8 +235,8 @@ dts_age3 %>%
        title = "H1 waves")+
   theme_bw()
 
-ggsave("figures/brazil/bcn_slides/serf_rr_h1_age.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/serf_rr_h1_age.png",
+#        w = 8, h = 4)
 
 h1_coh <- 
   dts_age3 %>% 
@@ -205,8 +254,8 @@ h1_coh <-
        title = "H1 waves")+
   theme_bw();h1_coh
 
-ggsave("figures/brazil/bcn_slides/serf_rr_h1_coh.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/serf_rr_h1_coh.png",
+#        w = 8, h = 4)
 
 h1_coh+
   geom_vline(xintercept = c(1957, 1968), linetype = "dashed", 
@@ -244,8 +293,8 @@ dts_age3 %>%
             label = "1957 H2N2 pandemic", angle = 90, 
             size = 3, hjust = 0, col = "#7b2cbf")
 
-ggsave("figures/brazil/bcn_slides/serf_rr_h1_coh_lines_rep_mbio.png",
-       w = 8, h = 4)
+# ggsave("figures/brazil/bcn_slides/serf_rr_h1_coh_lines_rep_mbio.png",
+#        w = 8, h = 4)
 
 
 
