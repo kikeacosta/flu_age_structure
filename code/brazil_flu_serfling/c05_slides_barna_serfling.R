@@ -354,7 +354,6 @@ ggsave("figures/brazil/bcn_slides/serf_rr_h1_h3_coh.png",
        w = 8, h = 4)
 
 
-
 # testing mirror
 dts_age3 %>% 
   filter(sex == "t",
