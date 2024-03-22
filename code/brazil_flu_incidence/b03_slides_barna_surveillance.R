@@ -54,9 +54,6 @@ dt2 <-
 # # deaths
 # dt2 %>% 
   
-
-
-
 # descriptive plot of data
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 cols <- 
@@ -212,6 +209,8 @@ all <-
   left_join(pop) %>% 
   filter(year %in% c(2009, 2012, 2013, 2016, 2017, 2018, 2019),
          sex == "t")
+
+write_rds(all, "data_inter/sample_dts_hsp_bra.rds")
 
 
 # smoothing rates along ages ====

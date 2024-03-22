@@ -73,7 +73,7 @@ pop_int <-
 
 # visualizing annual values and weekly estimates
 pop_int %>% 
-  filter(age == 20) %>% 
+  filter(age == 60) %>% 
   ggplot()+
   geom_line(aes(date, pop_int), linewidth = 1)+
   geom_point(aes(date, pop), col = "red", size = 1.5, alpha = 0.7)+
