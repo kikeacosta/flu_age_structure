@@ -1,15 +1,8 @@
 rm(list=ls())
 library(tidyverse)
-# library(lubridate)
-# library(ungroup)
-# library(readxl)
-# library(viridis)
-# library(tidyr)
-# library(ggplot2)
+library(scales)
 if (!("MortalitySmooth" %in% rownames(installed.packages()))) remotes::install_github("timriffe/MortalitySmooth")
 library(MortalitySmooth)
-library(tidyverse)
-library(scales)
 
 ## R-studio to get the same dir as for the .R file
 # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -17,6 +10,8 @@ library(scales)
 options(scipen=999)
 set.seed(2019) 
 
+## simple function for "empirical" derivatives
+## by GC ~2004 from Stewart's Calculus, sec. 2.7
 emp.der <- function(x, y){
   m <- length(x)
   a <- c(diff(y), 1)

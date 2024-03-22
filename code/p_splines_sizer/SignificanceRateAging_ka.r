@@ -21,9 +21,9 @@ dt_in <- readRDS("data_inter/sample_dts_hsp_bra.rds")
 dt_test <- readRDS("data_inter/sample_h1_2016.rds") %>% 
   rename(dts_t = dts, exposure_t = exposure)
 
-comp <- 
-  dati0 %>% 
-  left_join(dt_test)
+# comp <- 
+#   dati0 %>% 
+#   left_join(dt_test)
   
 
 unique(dt_in$type)
@@ -53,11 +53,6 @@ y <- dati0$dts ## !!!
 e <- dati0$exposure
 lmx <- log(y/e)
 lmx1 <- emp.der(x, lmx)
-# par(mfrow=c(2,1))
-# plot(x, lmx, t="o")
-# plot(x, lmx1, t="o")
-# abline(h=0, lty=2)
-# par(mfrow=c(1,1))
 
 dt1 <- 
   tibble(age = x,
@@ -86,73 +81,16 @@ nb <- ncol(B)
 D <- diff(diag(nb), diff=2)
 tDD <- t(D)%*%D
 
-## penalized IWLS algorithm for a given lambda
-lambda <- 10^1
-P <- lambda*tDD
-eta <- log((y+1)/(e+1))
-for(it in 1:10){
-  mu <- e*exp(eta)
-  z <- eta + (y-mu)/mu
-  W <- diag(c(mu))
-  tBWB <- t(B) %*% W %*% B
-  tBWz <- t(B) %*% W %*% z
-  tBWBpP <- tBWB+P
-  betas <- solve(tBWBpP, tBWz)
-  old.eta <- eta
-  eta <- B %*% betas
-  dif.eta <- max(abs(old.eta - eta))
-  cat(it, dif.eta, "\n")
-  if(dif.eta < 1e-6) break
-}
-betas.hat <- betas
-eta.hat <- eta
-eta1.hat <- C%*%betas.hat
-## confidence intervals
-## variance-covariance matrix for betas
-V.betas <- solve(tBWBpP)
-## variance-covariance matrix for eta and for eta1
-V.eta <- B %*% V.betas %*% t(B)
-V.eta1 <- C %*% V.betas %*% t(C)
-## standard errors for eta and eta1
-se.eta <- sqrt(diag(V.eta))
-se.eta1 <- sqrt(diag(V.eta1))
-## 95% CI for eta and eta1
+# ## 95% CI for eta and eta1
 alpha <- qnorm(0.975)
-eta.up <- eta.hat+alpha*se.eta
-eta.low <- eta.hat-alpha*se.eta
-eta1.up <- eta1.hat+alpha*se.eta1
-eta1.low <- eta1.hat-alpha*se.eta1
-
-## finer grid, mainly for plotting
+# 
+# ## finer grid, mainly for plotting
 ms <- 500
 xs <- seq(min(x), max(x), length=ms)
 BCs <- BsplineGrad(xs, min(x), max(x), nd, 3)
 Bs <- BCs$B
 Cs <- BCs$C
-etas.hat <- Bs%*%betas.hat
-etas1.hat <- Cs%*%betas.hat
-V.etas <- Bs %*% V.betas %*% t(Bs)
-V.etas1 <- Cs %*% V.betas %*% t(Cs)
-se.etas <- sqrt(diag(V.etas))
-se.etas1 <- sqrt(diag(V.etas1))
-etas.up <- etas.hat+alpha*se.etas
-etas.low <- etas.hat-alpha*se.etas
-etas1.up <- etas1.hat+alpha*se.etas1
-etas1.low <- etas1.hat-alpha*se.etas1
 
-## basic plot
-par(mfrow=c(2,1))
-plot(x, lmx)
-lines(xs, etas.hat, col=2, lwd=3)
-lines(xs, etas.up, col=2, lwd=1, lty=2)
-lines(xs, etas.low, col=2, lwd=1, lty=2)
-
-plot(x, lmx1)
-lines(xs, etas1.hat, t="l", col=2, lwd=3)
-lines(xs, etas1.up, col=2, lwd=1, lty=2)
-lines(xs, etas1.low, col=2, lwd=1, lty=2)
-abline(h=0, lwd=2, lty=3)
-par(mfrow=c(1,1))
 
 ## estimating for different lambdas
 lambdas <- 10^seq(-4, 6, 0.1)
@@ -162,6 +100,9 @@ nl <- length(lambdas)
 BETAS <- matrix(0, nb, nl)
 V.BETAS <- array(0, dim=c(nb,nb,nl))
 BICs <- numeric(nl)
+
+## penalized IWLS algorithm
+# ~~~~~~~~~~~~~~~~~~~~~~~~~
 for(l in 1:nl){
   P <- lambdas[l]*tDD
   ## penalized IWLS algorithm 
@@ -194,13 +135,15 @@ for(l in 1:nl){
   cat(lambdas[l], BICs[l], it, dif.eta, "\n")
 }
 
-plot(log10(lambdas), BICs)
+# plot(log10(lambdas), BICs)
 pmin <- which.min(BICs)
 (lambda.hat <- lambdas[pmin])
 
 ## compute etas and etas1 and 95% CI for each lambda
 ETAS <- ETAS1 <- matrix(0, ms, nl)
 ETAS.UP <- ETAS.LOW <- ETAS1.UP <- ETAS1.LOW <- matrix(0, ms, nl)
+
+l <- 1
 for(l in 1:nl){
   betas.hat <- BETAS[,l]
   V.betas <- V.BETAS[,,l]
@@ -242,14 +185,6 @@ for(l in 1:nl){
   SIGN.ETAS1[NoSign.l,l] <- 0
   SIGN.ETAS1[Neg.l,l] <- -1
   SIGN.ETAS1[Pos.l,l] <- 1
-  # ## simple plot for checking
-  # etas1.hat.l <- ETAS1[,l]
-  # plot(x, lmx1, t="n")
-  # lines(xs, etas1.up.l, col=2, lwd=1, lty=2)
-  # lines(xs, etas1.low.l, col=2, lwd=1, lty=2)
-  # abline(h=0, lwd=2, lty=3)
-  # points(xs, etas1.hat.l, col=factor(SIGN.ETAS1[,l]))
-  # locator(1)
 }
 
 ## plotting log-mortality
@@ -306,7 +241,7 @@ p <-
   #                       label=leg.lab)+
   # scale_size_manual("opt", guide="none", values = c(0.3,1.5))+
   # scale_alpha_manual(guide="none", values = c(0.1,1))+
-  coord_cartesian(xlim = c(0, 100), ylim = c(log(3e-7), log(2e-3)))+
+  coord_cartesian(xlim = c(0, 90), ylim = c(log(3e-7), log(2e-3)))+
   theme_bw() +
   theme(panel.grid.minor = element_blank(),
         axis.title.x = element_text(size = 18),
@@ -328,8 +263,6 @@ p
 
 ggsave("figures/p_splines_sizer/psplines_lambdas.png",
        w = 10, h = 6)
-
-
 
 DFetas %>%
   ggplot(aes(x=ages, y=eta)) +
@@ -420,7 +353,10 @@ names(DF1etas)[3] <- "value"
 names(DF1etas1)[3]  <- "value"
 DF1etas$type1 <- "Log-mortality"
 DF1etas1$type1 <- "Rate-of-aging"
-DFall <- rbind(DF1etas, DF1etas1)
+
+DFall <- 
+  rbind(DF1etas, DF1etas1) %>% 
+  mutate(cohort = yr - ages) 
 
 mycol <- viridis_pal(option = "inferno")(nl)
 mycol[pmin] <- "darkred"
@@ -446,7 +382,6 @@ obs <-
 p <- 
   DFall %>%
   filter(type != "Actual") %>% 
-  mutate(cohort = yr - ages) %>% 
   ggplot(aes(x=cohort, y=value)) +
   geom_line(aes(group = type), alpha = 0.1)+
   geom_point(data = obs, aes(col=type, shape=type), size = 0.8)+

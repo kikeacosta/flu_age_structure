@@ -19,60 +19,15 @@ rm(list = ls())
 ## R-studio to get the same dir as for the .R file
 # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
-library(tidyr)
-library(ggplot2)
-if (!("MortalitySmooth" %in% rownames(installed.packages()))) remotes::install_github("timriffe/MortalitySmooth")
-library("MortalitySmooth")
-library(scales)
-library(tidyverse)
+source("code/p_splines_sizer/00_functions.R")
 
 ColorBlind  <-  c("#88CCEE", "#CC6677", "#DDCC77", "#117733", 
                   "#332288", "#AA4499", "#44AA99", "#999933", 
                   "#882255", "#661100", "#6699CC", "#888888")
 
-## simple function for "empirical" derivatives
-## by GC ~2004 from Stewart's Calculus, sec. 2.7
-emp.der <- function(x, y){
-  m <- length(x)
-  a <- c(diff(y), 1)
-  b <- c(diff(x), 1)
-  ab <- a/b
-  wei <- c(rep(1, m-1), 0)
-  
-  a1 <- c(1, -1*diff(y))
-  b1 <- c(1, -1*diff(x))
-  ab1 <- a1/b1
-  wei1 <- c(0, rep(1, m-1))
-  
-  y1emp <- (ab*wei + ab1*wei1)/(wei+wei1)
-  return(y1emp)
-}
-
-## function to build up B-splines and associated bases for derivatives
-BsplineGrad <- function(x, xl, xr, ndx=NULL, deg, knots=NULL){
-  if(is.null(knots)){
-    dx <- (xr - xl)/ndx
-    knots <- seq(xl - deg * dx, xr + deg * dx, by=dx)
-    knots <- round(knots, 8)
-  }else{
-    knots <- knots
-    dx <- diff(knots)[1]
-  }
-  P <- outer(x, knots, MortSmooth_tpower, deg)
-  n <- dim(P)[2]
-  D <- diff(diag(n), diff=deg+1)/(gamma(deg+1)*dx^deg)
-  B <- (-1)^(deg + 1) * P %*% t(D)
-  ##
-  knots1 <- knots[-c(1,length(knots))]
-  P <- outer(x, knots1, MortSmooth_tpower, deg-1)
-  n <- dim(P)[2]
-  D <- diff(diag(n),diff=deg)/(gamma(deg)*dx^(deg-1))
-  BB <- ((-1)^(deg) * P %*% t(D))/dx
-  D <- diff(diag(ncol(BB) + 1))
-  C <- BB %*% D
-  ##
-  out <- list(dx=dx, knots=knots, B=B, C=C)
-}
+ColorBlind[3]
+ColorBlind[1]
+ColorBlind[2]
 
 do_magic <- function(dt_in = dt_in, yr, tp){
   
@@ -100,68 +55,28 @@ do_magic <- function(dt_in = dt_in, yr, tp){
   D <- diff(diag(nb), diff=2)
   tDD <- t(D)%*%D
   
-  ## penalized IWLS algorithm for a given lambda
-  lambda <- 10^1
-  P <- lambda*tDD
-  eta <- log((y+1)/(e+1))
-  for(it in 1:10){
-    mu <- e*exp(eta)
-    z <- eta + (y-mu)/mu
-    W <- diag(c(mu))
-    tBWB <- t(B) %*% W %*% B
-    tBWz <- t(B) %*% W %*% z
-    tBWBpP <- tBWB+P
-    betas <- solve(tBWBpP, tBWz)
-    old.eta <- eta
-    eta <- B %*% betas
-    dif.eta <- max(abs(old.eta - eta))
-    cat(it, dif.eta, "\n")
-    if(dif.eta < 1e-6) break
-  }
-  
-  betas.hat <- betas
-  eta.hat <- eta
-  eta1.hat <- C%*%betas.hat
-  ## confidence intervals
-  ## variance-covariance matrix for betas
-  V.betas <- solve(tBWBpP)
-  ## variance-covariance matrix for eta and for eta1
-  V.eta <- B %*% V.betas %*% t(B)
-  V.eta1 <- C %*% V.betas %*% t(C)
-  ## standard errors for eta and eta1
-  se.eta <- sqrt(diag(V.eta))
-  se.eta1 <- sqrt(diag(V.eta1))
-  ## 95% CI for eta and eta1
+  # ## 95% CI for eta and eta1
   alpha <- qnorm(0.975)
-  eta.up <- eta.hat+alpha*se.eta
-  eta.low <- eta.hat-alpha*se.eta
-  eta1.up <- eta1.hat+alpha*se.eta1
-  eta1.low <- eta1.hat-alpha*se.eta1
-  
-  ## finer grid, mainly for plotting
+  # 
+  # ## finer grid, mainly for plotting
   ms <- 500
   xs <- seq(min(x), max(x), length=ms)
   BCs <- BsplineGrad(xs, min(x), max(x), nd, 3)
   Bs <- BCs$B
   Cs <- BCs$C
-  etas.hat <- Bs%*%betas.hat
-  etas1.hat <- Cs%*%betas.hat
-  V.etas <- Bs %*% V.betas %*% t(Bs)
-  V.etas1 <- Cs %*% V.betas %*% t(Cs)
-  se.etas <- sqrt(diag(V.etas))
-  se.etas1 <- sqrt(diag(V.etas1))
-  etas.up <- etas.hat+alpha*se.etas
-  etas.low <- etas.hat-alpha*se.etas
-  etas1.up <- etas1.hat+alpha*se.etas1
-  etas1.low <- etas1.hat-alpha*se.etas1
+  
   
   ## estimating for different lambdas
-  lambdas <- 10^seq(-4,7, 0.1)
+  lambdas <- 10^seq(-4, 6, 0.1)
+  # lambdas <- 10^seq(-4,7)
   nl <- length(lambdas)
   ## what need to be saved
   BETAS <- matrix(0, nb, nl)
   V.BETAS <- array(0, dim=c(nb,nb,nl))
   BICs <- numeric(nl)
+  
+  ## penalized IWLS algorithm
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~
   for(l in 1:nl){
     P <- lambdas[l]*tDD
     ## penalized IWLS algorithm 
@@ -197,9 +112,12 @@ do_magic <- function(dt_in = dt_in, yr, tp){
   # plot(log10(lambdas), BICs)
   pmin <- which.min(BICs)
   (lambda.hat <- lambdas[pmin])
+  
   ## compute etas and etas1 and 95% CI for each lambda
   ETAS <- ETAS1 <- matrix(0, ms, nl)
   ETAS.UP <- ETAS.LOW <- ETAS1.UP <- ETAS1.LOW <- matrix(0, ms, nl)
+  
+  l <- 1
   for(l in 1:nl){
     betas.hat <- BETAS[,l]
     V.betas <- V.BETAS[,,l]
@@ -241,20 +159,11 @@ do_magic <- function(dt_in = dt_in, yr, tp){
     SIGN.ETAS1[NoSign.l,l] <- 0
     SIGN.ETAS1[Neg.l,l] <- -1
     SIGN.ETAS1[Pos.l,l] <- 1
-    # ## simple plot for checking
-    # etas1.hat.l <- ETAS1[,l]
-    # plot(x, lmx1, t="n")
-    # lines(xs, etas1.up.l, col=2, lwd=1, lty=2)
-    # lines(xs, etas1.low.l, col=2, lwd=1, lty=2)
-    # abline(h=0, lwd=2, lty=3)
-    # points(xs, etas1.hat.l, col=factor(SIGN.ETAS1[,l]))
-    # locator(1)
   }
   
   ## plotting log-mortality
   ## a subset is needed when "many" lambdas are considered
   ## construction of labels for the legend to be improved
-  
   
   DFetas.obs <- data.frame(ages=x, type="Actual", eta=lmx)
   DFetas.hat <- expand.grid(list(ages=xs, type=lambdas))
@@ -262,23 +171,8 @@ do_magic <- function(dt_in = dt_in, yr, tp){
   DFetas <- rbind(DFetas.obs, DFetas.hat)
   DFetas$type <- factor(DFetas$type, levels = c("Actual", lambdas))
   
-  ## better way to build leg.lab and loglab?
-  leg.lab <- c("Observed",
-               expression(paste(lambda, "=", 0.0001)),
-               expression(paste(lambda, "=", 0.001)),
-               expression(paste(lambda, "=", 0.01)),
-               expression(paste(lambda, "=", 0.1)),
-               expression(paste(lambda, "=", 1)),
-               expression(paste(lambda, "=", 10)),
-               expression(paste(lambda, "=", 100)),
-               expression(paste(lambda, "=", 1000)),
-               expression(paste(lambda, "=", 10000)),
-               expression(paste(lambda, "=", 100000)),
-               expression(paste(lambda, "=", 1000000)),
-               expression(paste(lambda, "=", 10000000)))
   loglab <- c(0.0000001, 0.0000003, 0.000001, 0.000003, 0.00001, 0.00003, 0.0001)
-  mycol <- viridis_pal(option = "inferno")(nl)
-  mycol[pmin] <- "darkred"
+
   DFetas$opt <- "no"
   DFetas$opt[DFetas$type==lambda.hat] <- "yes"
   DFetas$opt <- factor(DFetas$opt)
@@ -290,9 +184,6 @@ do_magic <- function(dt_in = dt_in, yr, tp){
   DFetas1 <- rbind(DFetas1.obs, DFetas1.hat)
   DFetas1$type <- factor(DFetas1$type, levels = c("Actual", lambdas))
   
-  #loglab <- c(0.0000001, 0.0000003, 0.000001, 0.000003, 0.00001, 0.00003, 0.0001)
-  mycol <- viridis_pal(option = "inferno")(nl)
-  mycol[pmin] <- "darkred"
   DFetas1$opt <- "no"
   DFetas1$opt[DFetas1$type==lambda.hat] <- "yes"
   DFetas1$opt <- factor(DFetas1$opt)
@@ -310,8 +201,7 @@ do_magic <- function(dt_in = dt_in, yr, tp){
     rbind(DF1etas, DF1etas1) %>% 
     mutate(cohort = yr - ages) 
   
-  mycol <- viridis_pal(option = "inferno")(nl)
-  mycol[pmin] <- "darkred"
+
   DFetas1$opt <- "no"
   DFetas1$opt[DFetas1$type==lambda.hat] <- "yes"
   DFetas1$opt <- factor(DFetas1$opt)
@@ -336,7 +226,8 @@ do_magic <- function(dt_in = dt_in, yr, tp){
     DFall %>%
     filter(type == "Actual")
   
-  DFall %>%
+  p_spl_drv <- 
+    DFall %>%
     filter(type != "Actual") %>% 
     ggplot(aes(x=cohort, y=value)) +
     facet_wrap(~type1, nrow = 2, scales = "free_y")+
@@ -366,7 +257,7 @@ do_magic <- function(dt_in = dt_in, yr, tp){
           legend.key.height = unit(.2, 'cm'), #change legend key height
           legend.key.width = unit(.2, 'cm'), #change legend key width
           legend.text = element_text(size=6))
-    
+  p_spl_drv
   ggsave(paste0("figures/p_splines_sizer/ests/spsplines_deriv", 
                 "_",
                 tp,
@@ -391,9 +282,8 @@ do_magic <- function(dt_in = dt_in, yr, tp){
     ggplot(aes(cohort, lambdas)) + 
     geom_tile(aes(fill=sign))+
     scale_fill_manual(name=NULL,
-                      values=c("0"=ColorBlind[3],"-1"=ColorBlind[1],"1"=ColorBlind[2]),
+                      values=c("0"="#DDCC77","-1"="#88CCEE","1"="#CC6677"),
                       labels = c("Significant Negative", "Not Significant", "Significant Positive"))+
-    # scale_x_continuous(breaks=seq(0,90,10), expand=c(0,0))+
     scale_y_continuous(name="smoothing parameter (log10-scale)", expand=c(0,0),
                        breaks = log10(lambdalab), labels=lambdalab)+
     geom_hline(yintercept = log10(lambda.hat), col="black", lty=1, lwd=2)+
@@ -410,7 +300,6 @@ do_magic <- function(dt_in = dt_in, yr, tp){
           legend.position="top",
           plot.title = element_text(size=20, hjust = 0))
   p_sz
-  
   ggsave(paste0("figures/p_splines_sizer/ests/psplines_sizer", 
                 "_",
                 tp,
@@ -434,9 +323,14 @@ dt_in <-
   readRDS("data_inter/sample_dts_hsp_bra.rds") %>% 
   filter(age < 90)
 
-tt <- do_magic(dt_in, 2016, "h1")
-tt <- do_magic(dt_in, 2013, "h1")
-tt <- do_magic(dt_in, 2009, "h1")
+unique(dt_in$year)
+
+t09 <- do_magic(dt_in, 2009, "h1")
+t09 <- do_magic(dt_in, 2012, "h1")
+t13 <- do_magic(dt_in, 2013, "h1")
+t16 <- do_magic(dt_in, 2016, "h1")
+# t17 <- do_magic(dt_in, 2017, "h1")
+t18 <- do_magic(dt_in, 2018, "h1")
 
 
 ## END
