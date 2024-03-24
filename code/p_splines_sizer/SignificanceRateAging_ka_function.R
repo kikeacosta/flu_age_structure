@@ -13,6 +13,9 @@
 ## Data provided by Kike Acosta
 ## by Giancarlo Camarda, 2024.03.20
 
+## Adapted and almost destroyed by Kike Acosta, 2024.03.23
+## wrapped in a function
+
 rm(list = ls())
 ## plotting in a difference device
 # options(device="X11")
@@ -22,15 +25,33 @@ rm(list = ls())
 source("code/p_splines_sizer/00_functions.R")
 
 dt_in <- 
-  readRDS("data_inter/sample_dts_hsp_bra.rds") %>% 
-  filter(age < 90)
+  readRDS("data_inter/sample_dts_hsp_bra.rds")
 
-do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
+nd = 18
+# ages to include
+ag1 = 0
+ag2 = 90
+# year
+yr = 2016
+# measure
+tp = "h1"
+
+do_gc_magic <- function(dt_in = dt_in, 
+                     # knots
+                     nd = 18, 
+                     # ages to include
+                     ag1 = 0, 
+                     ag2 = 90,
+                     # year
+                     yr = 2009, 
+                     # measure
+                     tp = "h1"){
   
   dati0 <- 
     dt_in %>% 
     rename(exposure = pop) %>% 
-    filter(year == yr,
+    filter(age %in% ag1:ag2,
+           year == yr,
            type == tp)
   
   x <- dati0$age
@@ -41,7 +62,6 @@ do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
   lmx1 <- emp.der(x, lmx)
 
   ## B-splines and C-matrix over age
-  nd <- floor(m/5)
   BC <- BsplineGrad(x, min(x), max(x), nd, 3)
   B <- BC$B
   C <- BC$C
@@ -61,7 +81,6 @@ do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
   Bs <- BCs$B
   Cs <- BCs$C
   
-  
   ## estimating for different lambdas
   lambdas <- 10^seq(-4, 6, 0.1)
   # lambdas <- 10^seq(-4,7)
@@ -69,6 +88,7 @@ do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
   ## what need to be saved
   BETAS <- matrix(0, nb, nl)
   V.BETAS <- array(0, dim=c(nb,nb,nl))
+  AICs <- numeric(nl)
   BICs <- numeric(nl)
   
   ## penalized IWLS algorithm
@@ -101,13 +121,15 @@ do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
     y0 <- y
     y0[y==0] <- 10^-8
     dev <- 2 * sum((y * log(y0/mu)))
+    AICs[l] <- dev + 2*ed
     BICs[l] <- dev + log(m)*ed
     cat(lambdas[l], BICs[l], it, dif.eta, "\n")
   }
   
-  # plot(log10(lambdas), BICs)
-  pmin <- which.min(BICs)
-  (lambda.hat <- lambdas[pmin])
+  pmin_aic <- which.min(AICs)
+  (lambda.hat_aic <- lambdas[pmin_aic])
+  pmin_bic <- which.min(BICs)
+  (lambda.hat_bic <- lambdas[pmin_bic])
   
   ## compute etas and etas1 and 95% CI for each lambda
   ETAS <- ETAS1 <- matrix(0, ms, nl)
@@ -136,9 +158,7 @@ do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
     ETAS1.UP[,l] <- etas1.up
   }
   
-  
   ## at the alpha=0.05
-  
   ## for a given alpha we have different outcome in terms of rate-of-aging
   ## 1) not significant rate-of-aging
   ## 2) positive significant rate-of-aging
@@ -156,124 +176,132 @@ do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
     SIGN.ETAS1[Neg.l,l] <- -1
     SIGN.ETAS1[Pos.l,l] <- 1
   }
-  
-  ## plotting log-mortality
-  ## a subset is needed when "many" lambdas are considered
-  ## construction of labels for the legend to be improved
-  
-  DFetas.obs <- data.frame(ages=x, type="Actual", eta=lmx)
-  DFetas.hat <- expand.grid(list(ages=xs, type=lambdas))
-  DFetas.hat$eta <- c(ETAS)
-  DFetas <- rbind(DFetas.obs, DFetas.hat)
-  DFetas$type <- factor(DFetas$type, levels = c("Actual", lambdas))
-  
-  loglab <- c(0.0000001, 0.0000003, 0.000001, 0.000003, 0.00001, 0.00003, 0.0001)
 
-  DFetas$opt <- "no"
-  DFetas$opt[DFetas$type==lambda.hat] <- "yes"
-  DFetas$opt <- factor(DFetas$opt)
+  DFsign <- 
+    expand.grid(list(ages=xs, lambdas=log10(lambdas))) %>% 
+    mutate(cohort = yr - ages,
+           sign = c(SIGN.ETAS1) %>% as.factor)
   
-  ## plotting rate-of-aging
-  DFetas1.obs <- data.frame(ages=x, type="Actual", eta1=lmx1)
-  DFetas1.hat <- expand.grid(list(ages=xs, type=lambdas))
-  DFetas1.hat$eta1 <- c(ETAS1)
-  DFetas1 <- rbind(DFetas1.obs, DFetas1.hat)
-  DFetas1$type <- factor(DFetas1$type, levels = c("Actual", lambdas))
   
-  DFetas1$opt <- "no"
-  DFetas1$opt[DFetas1$type==lambda.hat] <- "yes"
-  DFetas1$opt <- factor(DFetas1$opt)
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # putting all together in tidy format
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
-  ## plotting log-mortality and rate-of-aging
-  ## for each lambda in the same framework
-  ## Note: different y-breaks to be done
-  DF1etas  <- DFetas
-  DF1etas1 <- DFetas1
-  names(DF1etas)[3] <- "value"
-  names(DF1etas1)[3]  <- "value"
-  DF1etas$type1 <- "Log-mortality"
-  DF1etas1$type1 <- "Rate-of-aging"
-  DFall <- 
-    rbind(DF1etas, DF1etas1) %>% 
-    mutate(cohort = yr - ages) 
+  mx_obs <- 
+    tibble(ages=x, value=lmx) %>% 
+    mutate(# mx = 1e3*exp(eta),
+           type1 = "Log mx")
   
+  spls <- 
+    expand_grid(ages=xs, type=lambdas) %>% 
+    arrange(type, ages) %>% 
+    mutate(value = c(ETAS),
+           ll = c(ETAS.LOW),
+           ul = c(ETAS.UP),
+           # mx = 1e3*exp(eta),
+           # mx_l = 1e3*exp(eta_l),
+           # mx_u = 1e3*exp(eta_u),
+           type1 = "Log mx",
+           inc = 1)
+  
+  d_obs <- 
+    tibble(ages=x, value=lmx1) %>% 
+    mutate(type1 = "Slope")
 
-  DFetas1$opt <- "no"
-  DFetas1$opt[DFetas1$type==lambda.hat] <- "yes"
-  DFetas1$opt <- factor(DFetas1$opt)
+  d_slps <- 
+    expand_grid(ages=xs, type=lambdas) %>% 
+    arrange(type, ages) %>% 
+    mutate(value = c(ETAS1),
+           ll = c(ETAS1.LOW),
+           ul = c(ETAS1.UP),
+           type1 = "Slope",
+           inc = ifelse(value >=-1.5 & value <=1.5, 1, 0))
+  
+  dt_obs <- 
+    bind_rows(mx_obs, d_obs) %>% 
+    mutate(cohort = yr - ages, 
+           type="Actual")
+  
+  dt_ests <- 
+    bind_rows(spls, d_slps) %>% 
+    mutate(opt = case_when(type == lambda.hat_aic ~ "AIC",
+                           type == lambda.hat_bic ~ "BIC",
+                           TRUE ~ "no"),
+           cohort = yr - ages)
+  
+  # plotting 
+  # ~~~~~~~~
+  
+  x_bks <- 
+    tibble(coh_bks = rev(seq(1920, 2020, 10))) %>% 
+    mutate(age_bks = yr - coh_bks,
+           x_bks = paste0(coh_bks, "\n(", age_bks, ")")) %>% 
+    pull(x_bks)
+  
+  
+  # p-splines and 1st derivatives
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
   h_line <- data.frame(
     yintercept = 0,
-    type1 = "Rate-of-aging"
+    type1 = "Slope"
   )
-
-  chts <- 
-    DFall %>%
-    filter(cohort == min(cohort) | cohort == max(cohort)) %>% 
-    pull(cohort)
   
-  coh_bks <- seq((min(chts) - min(chts)%%10), max(chts) + (10 - max(chts)%%10), 10)
-    
-  optims <- 
-    DFall %>%
-    filter(opt == "yes")
-  
-  obs <- 
-    DFall %>%
-    filter(type == "Actual")
-  
-  p_spl_drv <- 
-    DFall %>%
-    filter(type != "Actual") %>% 
+  p1 <- 
+    dt_ests %>%
+    filter(inc == 1) %>% 
     ggplot(aes(x=cohort, y=value)) +
     facet_wrap(~type1, nrow = 2, scales = "free_y")+
+    geom_ribbon(data = .  %>% filter(opt %in% c("AIC", "BIC")), 
+                aes(ymin = ll, ymax = ul, fill = opt), alpha = 0.1)+
     geom_line(aes(group = type), alpha = 0.1)+
-    geom_point(data = obs, col = "black", size = 0.8)+
-    geom_line(data = optims, size = 1, col = "#ff006e", alpha = 1)+
-    scale_x_continuous(breaks=coh_bks)+
-    geom_hline(data = h_line, aes(yintercept = yintercept), 
-               col="grey30", lwd=0.5, lty = "dashed")+
-    geom_vline(xintercept = c(1957, 1968, 1978, 2009), linetype = "dashed",
+    geom_point(data = dt_obs, col = "black", size = 0.8)+
+    geom_line(data = .  %>% filter(opt %in% c("AIC", "BIC")), 
+              aes(col = opt), size = .8, alpha = .9)+
+    scale_x_reverse(breaks = rev(seq(1920, 2020, 10)), labels = x_bks)+
+    scale_fill_manual(values = c("#ff006e", "#8338ec"))+
+    scale_color_manual(values = c("#ff006e", "#8338ec"))+
+    geom_hline(data = h_line, aes(yintercept=yintercept), col="grey30", lty=1, lwd=0.5)+
+    geom_vline(xintercept = c(1957, 1968, 1978, 2009), lty = "dashed",
                col = "grey40")+
-    coord_cartesian(xlim = c(1920, 2020))+
-    labs(x = "Cohort", y = "",
-         title = paste0(tp, "_", yr))+
+    coord_cartesian(xlim = c(2020, 1920))+
+    labs(x = "Cohort\n(Age)", 
+         title = paste0(tp, "_", yr, "_knts_", nd,
+                        ", ages ", ag1, " to ", ag2),
+         color = "Best", fill = "Best")+
     theme_bw() +
     theme(panel.grid.minor = element_blank(),
-          axis.title.x = element_text(size = 18),
-          axis.text.x  = element_text(size = 14),
-          axis.title.y = element_text(size = 18),
-          axis.text.y  = element_text(size = 14),
-          # plot.title = element_text(size=20, hjust = 0),
+          axis.title.x = element_text(size = 16),
+          axis.text.x  = element_text(size = 12),
+          axis.title.y = element_blank(),
+          axis.text.y  = element_text(size = 12),
+          plot.title = element_text(size=20, hjust = 0),
           strip.text = element_text(size = 14),
           strip.background = element_blank(),
-          legend.position = "none",
+          legend.position = "bottom",
           legend.direction = "horizontal",
           legend.key.size = unit(0.1, 'cm'), #change legend key size
           legend.key.height = unit(.2, 'cm'), #change legend key height
-          legend.key.width = unit(.2, 'cm'), #change legend key width
-          legend.text = element_text(size=6))
-  p_spl_drv
+          legend.key.width = unit(.6, 'cm'), #change legend key width
+          legend.text = element_text(size = 14),
+          legend.title = element_text(size = 16))
+  p1
+  
   ggsave(paste0("figures/p_splines_sizer/ests/spsplines_deriv", 
                 "_",
                 tp,
                 "_",
                 yr,
+                "_knts_",
+                nd,
+                "_ages_",
+                ag1, "_", ag2,
                 ".png"),
          w = 10, h = 8)
   
-  DFsign <- 
-    expand.grid(list(ages=xs, lambdas=log10(lambdas))) %>% 
-    mutate(cohort = yr - ages,
-           sign = c(SIGN.ETAS1) %>% as.factor)
-    
-  # DFsign$sign <- c(SIGN.ETAS1)
-  # DFsign$sign <- factor(DFsign$sign)
-  
-  # lambdalab <- lambdas
   lambdalab <- 10^seq(-4,7)
   
-  p_sz <- 
+  p2 <- 
     DFsign %>%
     ggplot(aes(cohort, lambdas)) + 
     geom_tile(aes(fill=sign))+
@@ -282,32 +310,46 @@ do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
                       labels = c("Significant Negative", "Not Significant", "Significant Positive"))+
     scale_y_continuous(name="smoothing parameter (log10-scale)", expand=c(0,0),
                        breaks = log10(lambdalab), labels=lambdalab)+
-    geom_hline(yintercept = log10(lambda.hat), col="black", lty=1, lwd=2)+
+    scale_x_reverse(breaks = rev(seq(1920, 2020, 10)), labels = x_bks)+
+    geom_hline(yintercept = log10(lambda.hat_aic), col="#ff006e", lty=1, lwd=1)+
+    geom_hline(yintercept = log10(lambda.hat_bic), col="#8338ec", lty=1, lwd=1)+
     geom_vline(xintercept = c(1957, 1968, 1978, 2009), linetype = "dashed",
                col = "grey40")+
-    ggtitle(paste0("Rate-of-aging (SiZer map by P-splines) ", tp, "_", yr))+
-    coord_cartesian(xlim = c(1920, 2020))+
+    annotate("text", x = 2020, y = log10(lambda.hat_aic), 
+             label = "AIC", col = "#ff006e", vjust = -.2)+
+    annotate("text", x = 2020, y = log10(lambda.hat_bic), 
+             label = "BIC", col = "#8338ec", vjust = -.2)+
+    labs(title = paste0("Slope (SiZer map by P-splines)"),
+         subtitle = paste0(tp, ", ", yr, ", with ", nd, " knots. Ages ", ag1, "-", ag2))+
+    coord_cartesian(xlim = c(2020, 1920))+
     theme_bw()+
     theme(axis.title.x = element_text(size = 18),
           axis.text.x  = element_text(size = 14),
           axis.title.y = element_text(size = 18),
           axis.text.y  = element_text(size = 14),
-          legend.text = element_text(size=12),
+          legend.text = element_text(size = 12),
           legend.position="top",
-          plot.title = element_text(size=20, hjust = 0))
-  p_sz
+          plot.title = element_text(size=18, hjust = 0),
+          plot.subtitle = element_text(size=16, hjust = 0),
+    )
+  p2
   ggsave(paste0("figures/p_splines_sizer/ests/psplines_sizer", 
                 "_",
                 tp,
                 "_",
                 yr,
+                "_knts_",
+                nd,
+                "_ages_",
+                ag1, "_", ag2,
                 ".png"),
          w = 10, h = 6)
   
   list_out <- list(
-    p_psplines = p_spl_drv,
-    psizzer = p_sz,
-    dt_ests = DFall,
+    p_psplines = p1,
+    psizzer = p2,
+    dt_obs = dt_obs,
+    dt_ests = dt_ests,
     dt_sizer = DFsign
   )
   
@@ -315,14 +357,28 @@ do_magic <- function(dt_in = dt_in, yr = 2009, tp = "h1"){
 
 }
 
+t16 <- do_gc_magic(dt_in, 5, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 10, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 15, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 18, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 19, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 20, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 30, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 50, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 75, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 100, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 200, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 500, ag1 = 0, ag2 = 90, 2016, "h1")
+
+
 unique(dt_in$year)
 
-t09 <- do_magic(dt_in, 2009, "h1")
-t12 <- do_magic(dt_in, 2012, "h1")
-t13 <- do_magic(dt_in, 2013, "h1")
-t16 <- do_magic(dt_in, 2016, "h1")
-t17 <- do_magic(dt_in, 2017, "h1")
-t18 <- do_magic(dt_in, 2018, "h1")
+t09 <- do_gc_magic(dt_in, 30, ag1 = 0, ag2 = 90, 2009, "h1")
+t12 <- do_gc_magic(dt_in, 20, ag1 = 0, ag2 = 90, 2012, "h1")
+t13 <- do_gc_magic(dt_in, 20, ag1 = 0, ag2 = 90, 2013, "h1")
+t16 <- do_gc_magic(dt_in, 20, ag1 = 0, ag2 = 90, 2016, "h1")
+t17 <- do_gc_magic(dt_in, 20, ag1 = 0, ag2 = 90, 2017, "h1")
+t18 <- do_gc_magic(dt_in, 20, ag1 = 0, ag2 = 90, 2018, "h1")
 
 # looking at specific outputs
 t09$dt_ests
