@@ -370,6 +370,11 @@ t16 <- do_gc_magic(dt_in, 100, ag1 = 0, ag2 = 90, 2016, "h1")
 t16 <- do_gc_magic(dt_in, 200, ag1 = 0, ag2 = 90, 2016, "h1")
 t16 <- do_gc_magic(dt_in, 500, ag1 = 0, ag2 = 90, 2016, "h1")
 
+t16 <- do_gc_magic(dt_in, 18, ag1 = 0, ag2 = 90, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 18, ag1 = 0, ag2 = 110, 2016, "h1")
+t16 <- do_gc_magic(dt_in, 18, ag1 = 20, ag2 = 90, 2016, "h1")
+
+
 
 unique(dt_in$year)
 
