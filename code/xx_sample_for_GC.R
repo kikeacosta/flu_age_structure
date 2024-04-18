@@ -226,10 +226,6 @@ chunk <-
           exposure = sum(pop),
           .by = c(age))
 
-
-%>% 
-  select(year, age, dts, exposure = pop)
-
 write_rds(chunk, "data_inter/sample_h1_2016.rds")
 
 

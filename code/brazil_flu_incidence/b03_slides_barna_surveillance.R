@@ -185,13 +185,16 @@ h3 <-
             .by = c(year, sex, age)) %>% 
   mutate(type = "h3")
 
+unique(non_flu$sub)
+
+# non recognized as flu by any test
 non_flu <- 
   dt2 %>% 
   filter(
     sex == "t",
-    # flu != 1,
+    flu != 1,
     # sub == "z",
-    !(sub %in% c("h1", "ab"))
+    !(sub %in% c("h1", "h3"))
     ) %>% 
   filter() %>% 
   # mutate(dth = ifelse(outcome == "death_flu", 1, 0)) %>% 
@@ -200,7 +203,8 @@ non_flu <-
             dts = sum(dth*value),
             .by = c(year, sex, age)) %>% 
   mutate(type = "nonflu")
-}
+  }
+
 # putting all together
 all <- 
   bind_rows(ili, sari, flu, h1, h3, non_flu) %>% 
