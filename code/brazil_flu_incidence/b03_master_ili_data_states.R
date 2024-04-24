@@ -11,6 +11,9 @@ dt <-
   mutate(age = year - cohort) %>% 
   filter(sex != 1) 
 
+# selected states to be included in analysis
+states_sel <- 
+
 unique(dt$sex)
 
 unique(dt$year)
