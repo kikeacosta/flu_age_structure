@@ -1,49 +1,43 @@
 rm(list=ls())
 source("code/brazil_flu_incidence/b00_functions.R")
 
-pop <- 
-  read_rds("data_inter/brazil_exposures_2009_2023_ages_0_100.rds") 
+# selected states to be included in analysis
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Sao Paulo, Minas Gerais, Parana, Santa Catarina, Rio Grande do Sul, 
+# Mato Grosso do Sul
+states_sel <- c("SP", "MG", "PR", "SC", "RS", "MS")
 
-unique(pop$sex)
+pop <- 
+  read_rds("data_inter/brazil_exposures_2009_2023_ages_0_100.rds")
+  
+pop2 <- 
+  pop %>% 
+  filter(iso2 %in% c(states_sel)) %>% 
+  reframe(pop = sum(pop),
+          .by = c(sex, age, year))
+
+unique(pop2$iso2)
+unique(pop2$age)
 
 dt <- 
   read_rds("data_inter/flu_data_brazil_2009_2023_states.rds") %>% 
   mutate(age = year - cohort) %>% 
   filter(sex != 1) 
 
-# selected states to be included in analysis
-states_sel <- 
 
-unique(dt$sex)
-
-unique(dt$year)
-unique(dt$typ)
-table(dt$outcome)
-unique(dt$sub)
-table(dt$sub)
-table(dt$year, dt$sub, dt$outcome)
 table(dt$typ, dt$sub)
-table(dt$year, dt$sub)
-table(dt$hosp)
-table(dt$flu, dt$hosp)
-table(dt$outcome)
-table(dt$year)
-table(dt$age)
-table(dt$year, dt$sub)
-# table(dt2$sub, dt2$outcome)
-
-unique(dt2$sex)
-
+unique(dt2$iso2)
 # keeping only subtype and redistributing deaths by sex
 dt2 <- 
   dt %>% 
+  filter (iso2 %in% c(states_sel)) %>% 
   mutate(age = year - cohort,
          age = case_when(age < 0 ~ 0, 
                          age > 100 ~ 100,
                          TRUE ~ age)) %>% 
-  select(-typ, -cohort) %>% 
+  select(-typ) %>% 
   summarise(value = n(), 
-            .by = c(iso2, year, sex, age, flu, sub, hosp, noflu, outcome)) %>% 
+            .by = c(year, sex, age, flu, sub, hosp, noflu, outcome)) %>% 
   # imputing sex distribution
   spread(sex, value) %>% 
   replace_na(list(f = 0, m = 0, i = 0)) %>% 
@@ -66,7 +60,7 @@ ili <-
   summarise(css = sum(value),
             hsp = sum(hosp*value),
             dts = sum(dth*value),
-            .by = c(iso2, year, sex, age)) %>% 
+            .by = c(year, sex, age)) %>% 
   mutate(type = "ili")
 
 # sari
@@ -77,7 +71,7 @@ sari <-
   summarise(css = sum(value),
             hsp = sum(hosp*value),
             dts = sum(dth*value),
-            .by = c(iso2, year, sex, age)) %>% 
+            .by = c(year, sex, age)) %>% 
   mutate(type = "sari")
 
 # flu cases
@@ -89,7 +83,7 @@ flu <-
   summarise(css = sum(value),
             hsp = sum(hosp*value),
             dts = sum(dth*value),
-            .by = c(iso2, year, sex, age)) %>% 
+            .by = c(year, sex, age)) %>% 
   mutate(type = "flu")
 
 # H1 cases
@@ -102,7 +96,7 @@ h1 <-
   summarise(css = sum(value),
             hsp = sum(hosp*value),
             dts = sum(dth*value),
-            .by = c(iso2, year, sex, age)) %>% 
+            .by = c(year, sex, age)) %>% 
   mutate(type = "h1")
 
 # H3 cases
@@ -115,7 +109,7 @@ h3 <-
   summarise(css = sum(value),
             hsp = sum(hosp*value),
             dts = sum(dth*value),
-            .by = c(iso2, year, sex, age)) %>% 
+            .by = c(year, sex, age)) %>% 
   mutate(type = "h3")
 
 non_flu <- 
@@ -126,16 +120,20 @@ non_flu <-
   summarise(css = sum(value),
             hsp = sum(hosp*value),
             dts = sum(dth*value),
-            .by = c(iso2, year, sex, age)) %>% 
+            .by = c(year, sex, age)) %>% 
   mutate(type = "nonflu")
 
 # putting all together
 all <- 
   bind_rows(ili, sari, flu, h1, h3, non_flu) %>% 
-  complete(iso2, year, sex, age, type, 
+  complete(year, sex, age, type, 
            fill = list(css = 0, hsp = 0, dts = 0)) %>% 
-  arrange(type, iso2, year, sex, age) %>% 
-  left_join(pop) 
+  arrange(type, year, sex, age) %>% 
+  left_join(pop2) 
+
+unique(all$type)
+
+write_rds(all, "data_inter/master_brazil_flu_2009_2023.rds")
 
 # 
 # %>% 
@@ -150,7 +148,7 @@ all <-
 ix <- 
   all %>% 
   rename(value = css, exposure = pop) %>% 
-  group_by(iso2, year, sex, type) %>% 
+  group_by(year, sex, type) %>% 
   do(smooth_age(chunk = .data)) %>% 
   ungroup() 
 
@@ -158,7 +156,7 @@ ix <-
 mx <- 
   all %>% 
   rename(value = dts, exposure = pop) %>% 
-  group_by(iso2, year, sex, type) %>% 
+  group_by(year, sex, type) %>% 
   do(smooth_age(chunk = .data)) %>% 
   ungroup()
 
@@ -166,7 +164,7 @@ mx <-
 hsp <- 
   all %>% 
   rename(value = hsp, exposure = pop) %>% 
-  group_by(iso2, year, sex, type) %>% 
+  group_by(year, sex, type) %>% 
   do(smooth_age(chunk = .data)) %>% 
   ungroup()
 
@@ -176,9 +174,9 @@ cfr <-
   all %>% 
   rename(value = dts, exposure = css) %>% 
   left_join(ix %>% 
-              select(iso2, year, sex, age, type, exp_smt = val_smt)) %>% 
+              select(year, sex, age, type, exp_smt = val_smt)) %>% 
   left_join(mx %>% 
-              select(iso2, year, sex, age, type, val_smt = val_smt)) %>% 
+              select(year, sex, age, type, val_smt = val_smt)) %>% 
   mutate(value_r = value/exposure,
          val_smt_r = val_smt/exp_smt)
 
