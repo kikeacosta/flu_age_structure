@@ -28,7 +28,7 @@ ungroup_open_age <-
     ages <- chunk$age
     pops <- chunk$pop
     
-    nlast <- 111 - max(ages)
+    nlast <- 101 - max(ages)
     yr <- unique(chunk$year)
     sx <- unique(chunk$sex)
     
@@ -38,7 +38,7 @@ ungroup_open_age <-
     
     new_pop <- tibble(year = yr,
                       sex = sx,
-                      age = 0:110, 
+                      age = 0:100, 
                       pop = V1)
   
     chunk %>% 
@@ -53,5 +53,5 @@ pop2 <-
   ungroup() 
 
 write_rds(pop2, 
-          "data_inter/brazil_exposures_1999_2022_ages_0_110.rds",
+          "data_inter/brazil_exposures_1999_2022_ages_0_100.rds",
           compress = "xz")

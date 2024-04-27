@@ -18,7 +18,7 @@
 
 rm(list = ls())
 # calling functions built from Giancarlo's code
-source("code/00_functions.R")
+source("code/p_splines_sizer/00_functions.R")
 
 # loading influenza data (cases, hospitalizations, deaths) in Brazil 
 dt_in <- 
@@ -39,7 +39,7 @@ t09 <-
     20,
     # age interval
     ag1 = 0,
-    ag2 = 100,
+    ag2 = 90,
     # year
     2018,
     # type of flu
@@ -56,7 +56,7 @@ t09$p_sizer
 
 
 # # data for SiZer (ALAIN)
-data_sizer<-t09$dt_sizer
+data_sizer <- t09$dt_sizer
 
 sizer <-
   data_sizer %>%
@@ -90,11 +90,11 @@ sizer %>%
 
 # testing different combinations of knots and lambdas
 
-k <- seq(1,40,1)
-minaic <- vector(mode = "numeric", length = length(k) )
-minbic <- vector(mode = "numeric", length = length(k) )
-lambdaminaic <- vector(mode = "numeric", length = length(k) )
-lambdaminbic <- vector(mode = "numeric", length = length(k) )
+k <- seq(5,40,1)
+minaic <- vector(mode = "numeric", length = length(k))
+minbic <- vector(mode = "numeric", length = length(k))
+lambdaminaic <- vector(mode = "numeric", length = length(k))
+lambdaminbic <- vector(mode = "numeric", length = length(k))
 
 
 annee <-2018
@@ -103,11 +103,14 @@ a1 <- 0
 a2 <- 90
   
 for(kn in k){
-  temp<-do_gc_magic(dt_in, kn, ag1 = a1, ag2 = a2, annee, sub)
+  
+  temp <- do_gc_magic(dt_in, kn, ag1 = a1, ag2 = a2, annee, sub)
+  
   minaic[kn] <- temp[["minAIC"]]
   minbic[kn] <- temp[["minBIC"]]
   lambdaminaic[kn] <- temp[["lambdaminAIC"]] 
   lambdaminbic[kn] <- temp[["lambdaminBIC"]] 
+  
 }
 
 

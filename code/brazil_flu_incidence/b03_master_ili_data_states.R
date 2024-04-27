@@ -133,7 +133,7 @@ all <-
 
 unique(all$type)
 
-write_rds(all, "data_inter/master_brazil_flu_2009_2023.rds")
+write_rds(all, "data_inter/master_brazil_sel_states_flu_2009_2023.rds")
 
 # 
 # %>% 
